@@ -27,7 +27,7 @@ This implementation covers Phase 1 (foundation) and Phase 2 (dashboard MVP) toge
 Single Node.js process serves everything:
 
 ```
-Browser (localhost:3000)
+Browser (localhost:3141)
     ├── GET /              → Dashboard (static HTML/JS/CSS)
     ├── GET /api/stream    → SSE (live events + stats)
     ├── GET /api/events    → Query events with filters
@@ -53,7 +53,7 @@ agentstats/
   .gitignore
   src/
     input.css                ← Tailwind entry (@tailwind directives)
-    server.ts                ← Entry: Express, bind 127.0.0.1:3000
+    server.ts                ← Entry: Express, bind 127.0.0.1:3141
     config.ts                ← Env-based config with defaults
     db/
       connection.ts          ← better-sqlite3 init, WAL mode, pragmas
@@ -336,7 +336,7 @@ The dashboard is designed around the core use case: **replacing terminal-hopping
 
 | Variable | Default | Description |
 |---|---|---|
-| `AGENTSTATS_PORT` | `3000` | Server port |
+| `AGENTSTATS_PORT` | `3141` | Server port |
 | `AGENTSTATS_HOST` | `127.0.0.1` | Bind address |
 | `AGENTSTATS_DB_PATH` | `./data/agentstats.db` | SQLite database path |
 | `AGENTSTATS_MAX_PAYLOAD_KB` | `10` | Max metadata size per event (truncated) |
@@ -349,10 +349,10 @@ The dashboard is designed around the core use case: **replacing terminal-hopping
 ## Verification
 
 1. `pnpm run build` compiles without errors
-2. `pnpm start` → prints "AgentStats listening on http://127.0.0.1:3000"
-3. `curl -X POST localhost:3000/api/events -H 'Content-Type: application/json' -d '{"session_id":"s1","agent_type":"claude_code","event_type":"tool_use","tool_name":"Bash","project":"myapp","branch":"main"}'` → 201
-4. `curl localhost:3000/api/stats` → returns JSON with counts
-5. Open http://localhost:3000 → dark dashboard with agent cards, stats bar, event feed
+2. `pnpm start` → prints "AgentStats listening on http://127.0.0.1:3141"
+3. `curl -X POST localhost:3141/api/events -H 'Content-Type: application/json' -d '{"session_id":"s1","agent_type":"claude_code","event_type":"tool_use","tool_name":"Bash","project":"myapp","branch":"main"}'` → 201
+4. `curl localhost:3141/api/stats` → returns JSON with counts
+5. Open http://localhost:3141 → dark dashboard with agent cards, stats bar, event feed
 6. Run seed script → multiple agent cards appear, events stream in real time, "NOW" indicators update live
 7. Multiple browser tabs receive independent SSE streams
 

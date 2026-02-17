@@ -1,5 +1,5 @@
 // Seed script - generate realistic multi-agent events for development/demo
-const BASE_URL = process.env.AGENTSTATS_URL || 'http://127.0.0.1:3000';
+const BASE_URL = process.env.AGENTSTATS_URL || 'http://127.0.0.1:3141';
 
 interface EventPayload {
   session_id: string;

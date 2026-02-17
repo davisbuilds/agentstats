@@ -1,5 +1,5 @@
 export const config = {
-  port: parseInt(process.env.AGENTSTATS_PORT || '3000', 10),
+  port: parseInt(process.env.AGENTSTATS_PORT || '3141', 10),
   host: process.env.AGENTSTATS_HOST || '127.0.0.1',
   dbPath: process.env.AGENTSTATS_DB_PATH || './data/agentstats.db',
   maxPayloadKB: parseInt(process.env.AGENTSTATS_MAX_PAYLOAD_KB || '10', 10),
