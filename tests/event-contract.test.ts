@@ -55,3 +55,69 @@ test('normalizeIngestEvent rejects invalid enums and numeric fields', () => {
   assert.ok(fields.includes('tokens_in'));
   assert.ok(fields.includes('tokens_out'));
 });
+
+test('normalizeIngestEvent accepts new P0 fields (model, cost_usd, cache tokens)', () => {
+  const result = normalizeIngestEvent({
+    session_id: 'session-1',
+    agent_type: 'claude_code',
+    event_type: 'tool_use',
+    tool_name: 'Read',
+    model: 'claude-sonnet-4-5-20250929',
+    cost_usd: 0.0045,
+    tokens_in: 100,
+    tokens_out: 500,
+    cache_read_tokens: 50,
+    cache_write_tokens: 10,
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.equal(result.event.model, 'claude-sonnet-4-5-20250929');
+  assert.equal(result.event.cost_usd, 0.0045);
+  assert.equal(result.event.cache_read_tokens, 50);
+  assert.equal(result.event.cache_write_tokens, 10);
+});
+
+test('normalizeIngestEvent defaults cache tokens to 0 and cost_usd to undefined', () => {
+  const result = normalizeIngestEvent({
+    session_id: 'session-1',
+    agent_type: 'claude_code',
+    event_type: 'response',
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.equal(result.event.cache_read_tokens, 0);
+  assert.equal(result.event.cache_write_tokens, 0);
+  assert.equal(result.event.cost_usd, undefined);
+  assert.equal(result.event.model, undefined);
+});
+
+test('normalizeIngestEvent rejects negative cost_usd', () => {
+  const result = normalizeIngestEvent({
+    session_id: 'session-1',
+    agent_type: 'claude_code',
+    event_type: 'tool_use',
+    cost_usd: -1,
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+
+  const fields = result.errors.map(err => err.field);
+  assert.ok(fields.includes('cost_usd'));
+});
+
+test('normalizeIngestEvent accepts expanded event types', () => {
+  for (const eventType of ['llm_request', 'llm_response', 'file_change', 'git_commit', 'plan_step']) {
+    const result = normalizeIngestEvent({
+      session_id: 'session-1',
+      agent_type: 'claude_code',
+      event_type: eventType,
+    });
+
+    assert.equal(result.ok, true, `Expected event_type "${eventType}" to be accepted`);
+  }
+});

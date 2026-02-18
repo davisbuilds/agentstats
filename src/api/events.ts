@@ -77,6 +77,8 @@ eventsRouter.get('/', (req: Request, res: Response) => {
     toolName: req.query.tool_name as string | undefined,
     sessionId: req.query.session_id as string | undefined,
     branch: req.query.branch as string | undefined,
+    model: req.query.model as string | undefined,
+    source: req.query.source as string | undefined,
     since: req.query.since as string | undefined,
     until: req.query.until as string | undefined,
   });

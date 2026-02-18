@@ -4,6 +4,11 @@ export const EVENT_TYPES = [
   'session_end',
   'response',
   'error',
+  'llm_request',
+  'llm_response',
+  'file_change',
+  'git_commit',
+  'plan_step',
 ] as const;
 
 export const EVENT_STATUSES = [
@@ -12,11 +17,19 @@ export const EVENT_STATUSES = [
   'timeout',
 ] as const;
 
+export const EVENT_SOURCES = [
+  'api',
+  'hook',
+  'otel',
+  'import',
+] as const;
+
 const EVENT_TYPE_SET = new Set<string>(EVENT_TYPES);
 const EVENT_STATUS_SET = new Set<string>(EVENT_STATUSES);
 
 export type EventType = (typeof EVENT_TYPES)[number];
 export type EventStatus = (typeof EVENT_STATUSES)[number];
+export type EventSource = (typeof EVENT_SOURCES)[number];
 
 export interface NormalizedIngestEvent {
   event_id?: string;
@@ -32,6 +45,11 @@ export interface NormalizedIngestEvent {
   duration_ms?: number;
   metadata: unknown;
   client_timestamp?: string;
+  model?: string;
+  cost_usd?: number;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
+  source?: EventSource;
 }
 
 export interface ContractValidationError {
@@ -90,6 +108,20 @@ function getOptionalNonNegativeInt(
   if (raw === undefined || raw === null) return undefined;
   if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 0) {
     errors.push({ field, message: 'must be a non-negative integer when provided' });
+    return undefined;
+  }
+  return raw;
+}
+
+function getOptionalNonNegativeNumber(
+  input: Record<string, unknown>,
+  field: string,
+  errors: ContractValidationError[]
+): number | undefined {
+  const raw = input[field];
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'number' || raw < 0) {
+    errors.push({ field, message: 'must be a non-negative number when provided' });
     return undefined;
   }
   return raw;
@@ -169,9 +201,13 @@ export function normalizeIngestEvent(input: unknown): NormalizeEventResult {
   const toolName = getOptionalString(input, 'tool_name', errors);
   const branch = getOptionalString(input, 'branch', errors);
   const project = getOptionalString(input, 'project', errors);
+  const model = getOptionalString(input, 'model', errors);
   const durationMs = getOptionalNonNegativeInt(input, 'duration_ms', errors);
   const tokensIn = getOptionalNonNegativeInt(input, 'tokens_in', errors) ?? 0;
   const tokensOut = getOptionalNonNegativeInt(input, 'tokens_out', errors) ?? 0;
+  const cacheReadTokens = getOptionalNonNegativeInt(input, 'cache_read_tokens', errors) ?? 0;
+  const cacheWriteTokens = getOptionalNonNegativeInt(input, 'cache_write_tokens', errors) ?? 0;
+  const costUsd = getOptionalNonNegativeNumber(input, 'cost_usd', errors);
   const clientTimestamp = normalizeClientTimestamp(input, errors);
 
   if (errors.length > 0) {
@@ -194,6 +230,10 @@ export function normalizeIngestEvent(input: unknown): NormalizeEventResult {
       duration_ms: durationMs,
       metadata: input.metadata ?? {},
       client_timestamp: clientTimestamp,
+      model,
+      cost_usd: costUsd,
+      cache_read_tokens: cacheReadTokens,
+      cache_write_tokens: cacheWriteTokens,
     },
   };
 }

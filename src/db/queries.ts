@@ -1,6 +1,6 @@
 import { getDb } from './connection.js';
 import { config } from '../config.js';
-import type { EventStatus, EventType } from '../contracts/event-contract.js';
+import type { EventStatus, EventType, EventSource } from '../contracts/event-contract.js';
 
 // --- Agents ---
 
@@ -48,6 +48,7 @@ export interface SessionRow {
   event_count: number;
   tokens_in: number;
   tokens_out: number;
+  total_cost_usd: number;
 }
 
 export function getSessions(filters: {
@@ -75,7 +76,8 @@ export function getSessions(filters: {
     SELECT s.*,
       COALESCE((SELECT COUNT(*) FROM events e WHERE e.session_id = s.id), 0) as event_count,
       COALESCE((SELECT SUM(e.tokens_in) FROM events e WHERE e.session_id = s.id), 0) as tokens_in,
-      COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out
+      COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out,
+      COALESCE((SELECT SUM(e.cost_usd) FROM events e WHERE e.session_id = s.id), 0) as total_cost_usd
     FROM sessions s
     ${where}
     ORDER BY
@@ -94,7 +96,8 @@ export function getSessionWithEvents(sessionId: string, eventLimit: number = 10)
     SELECT s.*,
       COALESCE((SELECT COUNT(*) FROM events e WHERE e.session_id = s.id), 0) as event_count,
       COALESCE((SELECT SUM(e.tokens_in) FROM events e WHERE e.session_id = s.id), 0) as tokens_in,
-      COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out
+      COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out,
+      COALESCE((SELECT SUM(e.cost_usd) FROM events e WHERE e.session_id = s.id), 0) as total_cost_usd
     FROM sessions s WHERE s.id = ?
   `).get(sessionId) as SessionRow | undefined;
 
@@ -143,6 +146,11 @@ export interface EventRow {
   client_timestamp: string | null;
   metadata: string;
   payload_truncated: number;
+  model: string | null;
+  cost_usd: number | null;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  source: EventSource;
 }
 
 const METADATA_PRIORITY_KEYS = [
@@ -255,6 +263,11 @@ export function insertEvent(event: {
   duration_ms?: number;
   metadata: unknown;
   client_timestamp?: string;
+  model?: string;
+  cost_usd?: number | null;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
+  source?: string;
 }): EventRow | null {
   const db = getDb();
 
@@ -272,8 +285,9 @@ export function insertEvent(event: {
   try {
     const result = db.prepare(`
       INSERT INTO events (event_id, session_id, agent_type, event_type, tool_name, status,
-        tokens_in, tokens_out, branch, project, duration_ms, created_at, client_timestamp, metadata, payload_truncated)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?)
+        tokens_in, tokens_out, branch, project, duration_ms, created_at, client_timestamp,
+        metadata, payload_truncated, model, cost_usd, cache_read_tokens, cache_write_tokens, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       event.event_id || null,
       event.session_id,
@@ -288,7 +302,12 @@ export function insertEvent(event: {
       event.duration_ms || null,
       event.client_timestamp || null,
       metadata.value,
-      metadata.truncated ? 1 : 0
+      metadata.truncated ? 1 : 0,
+      event.model || null,
+      event.cost_usd ?? null,
+      event.cache_read_tokens ?? 0,
+      event.cache_write_tokens ?? 0,
+      event.source || 'api'
     );
 
     if (result.changes === 0) return null; // duplicate event_id
@@ -311,6 +330,8 @@ export function getEvents(filters: {
   toolName?: string;
   sessionId?: string;
   branch?: string;
+  model?: string;
+  source?: string;
   since?: string;
   until?: string;
 }): { events: EventRow[]; total: number } {
@@ -337,6 +358,14 @@ export function getEvents(filters: {
   if (filters.branch) {
     conditions.push('branch = ?');
     params.push(filters.branch);
+  }
+  if (filters.model) {
+    conditions.push('model = ?');
+    params.push(filters.model);
+  }
+  if (filters.source) {
+    conditions.push('source = ?');
+    params.push(filters.source);
   }
   if (filters.since) {
     conditions.push('created_at >= ?');
@@ -367,8 +396,10 @@ export interface Stats {
   total_sessions: number;
   total_tokens_in: number;
   total_tokens_out: number;
+  total_cost_usd: number;
   tool_breakdown: Record<string, number>;
   agent_breakdown: Record<string, number>;
+  model_breakdown: Record<string, number>;
   branches: string[];
 }
 
@@ -392,9 +423,10 @@ export function getStats(filters?: { agentType?: string; since?: string }): Stat
     SELECT
       COUNT(*) as total_events,
       COALESCE(SUM(tokens_in), 0) as total_tokens_in,
-      COALESCE(SUM(tokens_out), 0) as total_tokens_out
+      COALESCE(SUM(tokens_out), 0) as total_tokens_out,
+      COALESCE(SUM(cost_usd), 0) as total_cost_usd
     FROM events ${where}
-  `).get(...params) as { total_events: number; total_tokens_in: number; total_tokens_out: number };
+  `).get(...params) as { total_events: number; total_tokens_in: number; total_tokens_out: number; total_cost_usd: number };
 
   const activeSessions = (db.prepare(
     `SELECT COUNT(*) as count FROM sessions WHERE status = 'active'`
@@ -426,6 +458,18 @@ export function getStats(filters?: { agentType?: string; since?: string }): Stat
     agentBreakdown[row.agent_type] = row.count;
   }
 
+  const modelRows = db.prepare(`
+    SELECT model, COUNT(*) as count FROM events
+    ${where.replace('WHERE', conditions.length ? 'WHERE' : '')}
+    ${conditions.length > 0 ? 'AND' : 'WHERE'} model IS NOT NULL
+    GROUP BY model ORDER BY count DESC
+  `).all(...params) as { model: string; count: number }[];
+
+  const modelBreakdown: Record<string, number> = {};
+  for (const row of modelRows) {
+    modelBreakdown[row.model] = row.count;
+  }
+
   const branchRows = db.prepare(`
     SELECT DISTINCT branch FROM sessions WHERE branch IS NOT NULL ORDER BY last_event_at DESC
   `).all() as { branch: string }[];
@@ -436,8 +480,56 @@ export function getStats(filters?: { agentType?: string; since?: string }): Stat
     total_sessions: totalSessions,
     total_tokens_in: totals.total_tokens_in,
     total_tokens_out: totals.total_tokens_out,
+    total_cost_usd: totals.total_cost_usd,
     tool_breakdown: toolBreakdown,
     agent_breakdown: agentBreakdown,
+    model_breakdown: modelBreakdown,
     branches: branchRows.map(r => r.branch),
   };
+}
+
+// --- Filter Options ---
+
+export interface FilterOptions {
+  agent_types: string[];
+  event_types: string[];
+  tool_names: string[];
+  models: string[];
+  projects: string[];
+  branches: string[];
+  sources: string[];
+}
+
+export function getFilterOptions(): FilterOptions {
+  const db = getDb();
+
+  const agentTypes = (db.prepare(
+    'SELECT DISTINCT agent_type FROM events WHERE agent_type IS NOT NULL ORDER BY agent_type'
+  ).all() as { agent_type: string }[]).map(r => r.agent_type);
+
+  const eventTypes = (db.prepare(
+    'SELECT DISTINCT event_type FROM events WHERE event_type IS NOT NULL ORDER BY event_type'
+  ).all() as { event_type: string }[]).map(r => r.event_type);
+
+  const toolNames = (db.prepare(
+    'SELECT DISTINCT tool_name FROM events WHERE tool_name IS NOT NULL ORDER BY tool_name'
+  ).all() as { tool_name: string }[]).map(r => r.tool_name);
+
+  const models = (db.prepare(
+    'SELECT DISTINCT model FROM events WHERE model IS NOT NULL ORDER BY model'
+  ).all() as { model: string }[]).map(r => r.model);
+
+  const projects = (db.prepare(
+    'SELECT DISTINCT project FROM sessions WHERE project IS NOT NULL ORDER BY project'
+  ).all() as { project: string }[]).map(r => r.project);
+
+  const branches = (db.prepare(
+    'SELECT DISTINCT branch FROM sessions WHERE branch IS NOT NULL ORDER BY last_event_at DESC'
+  ).all() as { branch: string }[]).map(r => r.branch);
+
+  const sources = (db.prepare(
+    'SELECT DISTINCT source FROM events WHERE source IS NOT NULL ORDER BY source'
+  ).all() as { source: string }[]).map(r => r.source);
+
+  return { agent_types: agentTypes, event_types: eventTypes, tool_names: toolNames, models, projects, branches, sources };
 }

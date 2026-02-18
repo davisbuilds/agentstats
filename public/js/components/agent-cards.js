@@ -15,6 +15,12 @@ const AgentCards = {
     ended: { dot: 'bg-gray-500', text: 'text-gray-500', border: 'border-l-gray-600' },
   },
 
+  formatCost(n) {
+    if (n === 0 || n == null) return '$0.00';
+    if (n < 0.01) return '<$0.01';
+    return '$' + n.toFixed(2);
+  },
+
   getAgentStyle(agentType) {
     return this.agentColors[agentType] || this.agentColors.default;
   },
@@ -67,6 +73,7 @@ const AgentCards = {
     entry.session.event_count = (entry.session.event_count || 0) + 1;
     entry.session.tokens_in = (entry.session.tokens_in || 0) + (event.tokens_in || 0);
     entry.session.tokens_out = (entry.session.tokens_out || 0) + (event.tokens_out || 0);
+    entry.session.total_cost_usd = (entry.session.total_cost_usd || 0) + (event.cost_usd || 0);
     if (event.project) entry.session.project = event.project;
     if (event.branch) entry.session.branch = event.branch;
 
@@ -216,7 +223,7 @@ const AgentCards = {
             ${session.project || 'unknown'} ${session.branch ? `/ <span class="text-gray-400">${session.branch}</span>` : ''}
           </div>
           <div class="text-xs text-gray-500 mt-0.5">
-            ${session.event_count || 0} events · ${this.formatDuration(session.started_at)}
+            ${session.event_count || 0} events${session.total_cost_usd ? ` · ${this.formatCost(session.total_cost_usd)}` : ''} · ${this.formatDuration(session.started_at)}
           </div>
         </div>
 
