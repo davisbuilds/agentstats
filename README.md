@@ -55,6 +55,8 @@ Environment variables (all optional):
 - `AGENTSTATS_SESSION_TIMEOUT` (default: `30`)
 - `AGENTSTATS_MAX_FEED` (default: `200`)
 - `AGENTSTATS_STATS_INTERVAL` (default: `5000`)
+- `AGENTSTATS_MAX_SSE_CLIENTS` (default: `50`)
+- `AGENTSTATS_SSE_HEARTBEAT_MS` (default: `30000`)
 
 Seed script target override:
 
@@ -68,7 +70,7 @@ Seed script target override:
 - `GET /api/stats`: aggregate counters and breakdowns.
 - `GET /api/sessions`: list sessions.
 - `GET /api/sessions/:id`: session detail + recent events.
-- `GET /api/stream`: SSE stream (`event`, `stats`, `session_update`).
+- `GET /api/stream`: SSE stream (`event`, `stats`, `session_update`), returns `503` when max client limit is reached.
 - `GET /api/health`: basic service health.
 
 Required fields for ingest payloads: `session_id`, `agent_type`, `event_type`.

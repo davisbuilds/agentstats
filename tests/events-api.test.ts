@@ -27,10 +27,18 @@ async function getEvents(): Promise<{ events: Array<Record<string, unknown>>; to
   return response.json() as Promise<{ events: Array<Record<string, unknown>>; total: number }>;
 }
 
+async function getHealth(): Promise<{ sse_clients: number }> {
+  const response = await fetch(`${baseUrl}/api/health`);
+  assert.equal(response.status, 200);
+  return response.json() as Promise<{ sse_clients: number }>;
+}
+
 before(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentstats-test-'));
   process.env.AGENTSTATS_DB_PATH = path.join(tempDir, 'agentstats-test.db');
   process.env.AGENTSTATS_MAX_PAYLOAD_KB = '1';
+  process.env.AGENTSTATS_MAX_SSE_CLIENTS = '1';
+  process.env.AGENTSTATS_SSE_HEARTBEAT_MS = '1000';
 
   const { initSchema } = await import('../src/db/schema.js');
   const dbModule = await import('../src/db/connection.js');
@@ -234,4 +242,43 @@ test('session_end remains terminal when later events arrive for the same session
   const session = body.sessions.find(item => item.id === sessionId);
   assert.ok(session);
   assert.equal(session.status, 'ended');
+});
+
+test('SSE enforces max clients and cleans up disconnected clients', async () => {
+  const sseController = new AbortController();
+  const first = await fetch(`${baseUrl}/api/stream`, {
+    signal: sseController.signal,
+    headers: { Accept: 'text/event-stream' },
+  });
+  assert.equal(first.status, 200);
+  assert.match(first.headers.get('content-type') || '', /text\/event-stream/);
+
+  const blocked = await fetch(`${baseUrl}/api/stream`, {
+    headers: { Accept: 'text/event-stream' },
+  });
+  assert.equal(blocked.status, 503);
+  const blockedBody = await blocked.json() as { error: string; max_clients: number };
+  assert.equal(blockedBody.error, 'SSE client limit reached');
+  assert.equal(blockedBody.max_clients, 1);
+
+  const healthWhileOpen = await getHealth();
+  assert.equal(healthWhileOpen.sse_clients, 1);
+
+  sseController.abort();
+  try {
+    await first.body?.cancel();
+  } catch {
+    // The aborted stream may already be closed.
+  }
+
+  let closed = false;
+  for (let i = 0; i < 20; i += 1) {
+    const health = await getHealth();
+    if (health.sse_clients === 0) {
+      closed = true;
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+  assert.equal(closed, true);
 });

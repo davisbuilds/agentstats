@@ -26,8 +26,15 @@ export function stopStatsBroadcast(): void {
 
 // GET /api/stream - SSE endpoint
 streamRouter.get('/', (req: Request, res: Response) => {
-  broadcaster.addClient(res, {
+  const accepted = broadcaster.addClient(res, {
     agentType: req.query.agent_type as string | undefined,
     eventType: req.query.event_type as string | undefined,
   });
+
+  if (!accepted) {
+    res.status(503).json({
+      error: 'SSE client limit reached',
+      max_clients: config.maxSseClients,
+    });
+  }
 });
