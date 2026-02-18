@@ -43,6 +43,7 @@ Open `http://127.0.0.1:3141`.
 - `pnpm run test:watch`: watch-mode test runner.
 - `pnpm start`: run compiled server from `dist/`.
 - `pnpm run seed`: send demo events to the running server.
+- `pnpm run bench:ingest`: run ingest throughput benchmark.
 
 ## Configuration
 
@@ -61,6 +62,24 @@ Environment variables (all optional):
 Seed script target override:
 
 - `AGENTSTATS_URL` (default: `http://127.0.0.1:3141`)
+
+Benchmark script environment overrides:
+
+- `AGENTSTATS_BENCH_URL` (default: `http://127.0.0.1:3141`)
+- `AGENTSTATS_BENCH_MODE` (`batch` or `single`, default: `batch`)
+- `AGENTSTATS_BENCH_EVENTS` (default: `10000`)
+- `AGENTSTATS_BENCH_WARMUP_EVENTS` (default: `250`)
+- `AGENTSTATS_BENCH_CONCURRENCY` (default: `20`)
+- `AGENTSTATS_BENCH_BATCH_SIZE` (default: `25`, ignored in `single` mode)
+- `AGENTSTATS_BENCH_SESSION_CARDINALITY` (default: `100`)
+- `AGENTSTATS_BENCH_DUPLICATE_RATE` (default: `0`)
+- `AGENTSTATS_BENCH_TIMEOUT_MS` (default: `15000`)
+
+Example benchmark command:
+
+```bash
+pnpm run bench:ingest -- --events=20000 --concurrency=40 --batch-size=50
+```
 
 ## API Summary
 

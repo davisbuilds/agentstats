@@ -12,7 +12,8 @@
     "test:watch": "node --import tsx --test --watch tests/**/*.test.ts",
     "css:build": "tailwindcss -i src/input.css -o public/css/output.css --minify",
     "css:watch": "tailwindcss -i src/input.css -o public/css/output.css --watch",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "bench:ingest": "tsx scripts/benchmark-ingest.ts"
   },
   "keywords": [
     "ai",
