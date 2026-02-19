@@ -209,6 +209,7 @@ export function normalizeIngestEvent(input: unknown): NormalizeEventResult {
   const cacheWriteTokens = getOptionalNonNegativeInt(input, 'cache_write_tokens', errors) ?? 0;
   const costUsd = getOptionalNonNegativeNumber(input, 'cost_usd', errors);
   const clientTimestamp = normalizeClientTimestamp(input, errors);
+  const source = getOptionalString(input, 'source', errors) as EventSource | undefined;
 
   if (errors.length > 0) {
     return { ok: false, errors };
@@ -234,6 +235,7 @@ export function normalizeIngestEvent(input: unknown): NormalizeEventResult {
       cost_usd: costUsd,
       cache_read_tokens: cacheReadTokens,
       cache_write_tokens: cacheWriteTokens,
+      source,
     },
   };
 }

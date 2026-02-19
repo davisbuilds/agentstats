@@ -647,6 +647,67 @@ describe('POST /api/otel/v1/metrics', () => {
     assert.equal(cacheReadEvent.cache_read_tokens, 500);
     assert.equal(cacheWriteEvent.cache_write_tokens, 200);
   });
+
+  test('cumulative metrics are scoped per session (no cross-session corruption)', async () => {
+    const { resetCumulativeState } = await import('../src/otel/parser.js');
+    resetCumulativeState();
+
+    // Build cumulative metric payload for a specific session
+    const makeCumulativePayload = (sessionId: string, value: number) => ({
+      resourceMetrics: [{
+        resource: {
+          attributes: [
+            { key: 'service.name', value: { stringValue: 'claude_code' } },
+            { key: 'gen_ai.session.id', value: { stringValue: sessionId } },
+          ],
+        },
+        scopeMetrics: [{
+          metrics: [{
+            name: 'claude_code.token.usage',
+            sum: {
+              dataPoints: [{
+                asInt: String(value),
+                attributes: [
+                  { key: 'type', value: { stringValue: 'input' } },
+                  { key: 'model', value: { stringValue: 'claude-sonnet-4-20250514' } },
+                ],
+                timeUnixNano: '1700000000000000000',
+              }],
+              isMonotonic: true,
+              aggregationTemporality: 2, // cumulative
+            },
+          }],
+        }],
+      }],
+    });
+
+    // Session A: first report = 1000 (delta 1000)
+    await postJson(`${baseUrl}/api/otel/v1/metrics`, makeCumulativePayload('sess-A', 1000));
+    // Session B: first report = 500 (delta 500, NOT 500-1000=-500)
+    await postJson(`${baseUrl}/api/otel/v1/metrics`, makeCumulativePayload('sess-B', 500));
+    // Session A: second report = 1800 (delta 800, NOT 1800-500=1300)
+    await postJson(`${baseUrl}/api/otel/v1/metrics`, makeCumulativePayload('sess-A', 1800));
+    // Session B: second report = 900 (delta 400, NOT 900-1800=-900)
+    await postJson(`${baseUrl}/api/otel/v1/metrics`, makeCumulativePayload('sess-B', 900));
+
+    const events = await getEvents();
+    assert.equal(events.total, 4);
+
+    // Verify each session's deltas are correct
+    const sessAEvents = events.events.filter(e => e.session_id === 'sess-A');
+    const sessBEvents = events.events.filter(e => e.session_id === 'sess-B');
+    assert.equal(sessAEvents.length, 2);
+    assert.equal(sessBEvents.length, 2);
+
+    const sessATokens = sessAEvents.map(e => e.tokens_in as number).sort((a, b) => a - b);
+    const sessBTokens = sessBEvents.map(e => e.tokens_in as number).sort((a, b) => a - b);
+    // Session A: 1000, then 800
+    assert.deepEqual(sessATokens, [800, 1000]);
+    // Session B: 500, then 400
+    assert.deepEqual(sessBTokens, [400, 500]);
+
+    resetCumulativeState();
+  });
 });
 
 // ─── Traces endpoint tests ─────────────────────────────────────────────

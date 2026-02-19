@@ -282,3 +282,18 @@ test('SSE enforces max clients and cleans up disconnected clients', async () => 
   }
   assert.equal(closed, true);
 });
+
+test('POST /api/events preserves source field through normalization', async () => {
+  const response = await postJson(`${baseUrl}/api/events`, {
+    session_id: 'session-source',
+    agent_type: 'claude_code',
+    event_type: 'tool_use',
+    tool_name: 'Bash',
+    source: 'hook',
+  });
+  assert.equal(response.status, 201);
+
+  const events = await getEvents();
+  assert.equal(events.total, 1);
+  assert.equal(events.events[0].source, 'hook');
+});

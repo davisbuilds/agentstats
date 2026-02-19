@@ -121,3 +121,30 @@ test('normalizeIngestEvent accepts expanded event types', () => {
     assert.equal(result.ok, true, `Expected event_type "${eventType}" to be accepted`);
   }
 });
+
+test('normalizeIngestEvent preserves source field from input', () => {
+  for (const source of ['hook', 'otel', 'import', 'api'] as const) {
+    const result = normalizeIngestEvent({
+      session_id: 'session-1',
+      agent_type: 'claude_code',
+      event_type: 'tool_use',
+      source,
+    });
+
+    assert.equal(result.ok, true, `Expected source "${source}" to be accepted`);
+    if (!result.ok) return;
+    assert.equal(result.event.source, source, `Expected source to be "${source}"`);
+  }
+});
+
+test('normalizeIngestEvent leaves source undefined when not provided', () => {
+  const result = normalizeIngestEvent({
+    session_id: 'session-1',
+    agent_type: 'claude_code',
+    event_type: 'tool_use',
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.event.source, undefined);
+});

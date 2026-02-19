@@ -438,7 +438,7 @@ export function parseOtelMetrics(payload: OtelMetricsPayload): ParsedMetricDelta
           const tokenType = getAttr(dp.attributes, 'type')
             ?? getAttr(dp.attributes, 'token.type');
 
-          const cacheKey = `${agentType}|${metricName}|${model ?? ''}|${tokenType ?? ''}`;
+          const cacheKey = `${sessionId}|${agentType}|${metricName}|${model ?? ''}|${tokenType ?? ''}`;
           const delta = isCumulative ? computeDelta(cacheKey, rawValue) : rawValue;
 
           if (delta <= 0) continue;
