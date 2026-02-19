@@ -3,6 +3,7 @@ const SessionDetail = {
   visible: false,
   sessionId: null,
   data: null,
+  activeTab: 'overview', // 'overview' | 'transcript'
 
   formatCost(n) {
     if (n === 0 || n == null) return '$0.00';
@@ -50,6 +51,7 @@ const SessionDetail = {
   async open(sessionId) {
     this.sessionId = sessionId;
     this.visible = true;
+    this.activeTab = 'overview';
 
     const panel = document.getElementById('session-detail-panel');
     panel.classList.remove('hidden');
@@ -65,6 +67,14 @@ const SessionDetail = {
     } catch (err) {
       document.getElementById('session-detail-content').innerHTML =
         '<div class="text-center py-12 text-red-400">Failed to load session data</div>';
+    }
+  },
+
+  switchTab(tab) {
+    this.activeTab = tab;
+    this.render();
+    if (tab === 'transcript' && this.sessionId) {
+      Transcript.load(this.sessionId);
     }
   },
 
@@ -113,9 +123,12 @@ const SessionDetail = {
     const agentStyle = AgentCards.getAgentStyle(session.agent_type);
     const statusStyle = AgentCards.getStatusStyle(session.status);
 
+    const overviewActive = this.activeTab === 'overview';
+    const transcriptActive = this.activeTab === 'transcript';
+
     container.innerHTML = `
       <!-- Header -->
-      <div class="mb-6">
+      <div class="mb-4">
         <div class="flex items-center gap-3 mb-2">
           <span class="text-xs px-1.5 py-0.5 rounded ${agentStyle.badge}">${agentStyle.label}</span>
           <span class="inline-flex items-center gap-1.5 text-xs">
@@ -129,6 +142,15 @@ const SessionDetail = {
           Session: ${session.id.slice(0, 12)}... · Started ${this.formatTime(session.started_at)}
         </div>
       </div>
+
+      <!-- Tab bar -->
+      <div class="flex gap-1 mb-4 border-b border-gray-700 pb-1">
+        <button data-tab="overview" class="text-xs px-3 py-1 rounded-t ${overviewActive ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}">Overview</button>
+        <button data-tab="transcript" class="text-xs px-3 py-1 rounded-t ${transcriptActive ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}">Transcript</button>
+      </div>
+
+      <!-- Overview tab -->
+      <div id="tab-overview" class="${overviewActive ? '' : 'hidden'}">
 
       <!-- Summary stats -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -191,7 +213,23 @@ const SessionDetail = {
           ${events.length === 0 ? '<div class="text-xs text-gray-500 text-center py-4">No events</div>' : ''}
         </div>
       </div>
+
+      </div><!-- end tab-overview -->
+
+      <!-- Transcript tab -->
+      <div id="tab-transcript" class="${transcriptActive ? '' : 'hidden'}">
+        <div id="transcript-content">
+          <div class="text-center py-8 text-gray-500 text-xs">Loading transcript...</div>
+        </div>
+      </div>
     `;
+
+    // Wire tab buttons
+    container.querySelectorAll('[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.switchTab(btn.dataset.tab);
+      });
+    });
   },
 
   renderEventRow(evt) {

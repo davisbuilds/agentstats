@@ -28,6 +28,10 @@ interface ClaudeCodeLogLine {
   // tool_result fields
   is_error?: boolean;
   status?: string;
+  // tool_use input
+  input?: unknown;
+  // tool_result output
+  output?: unknown;
 }
 
 // ─── Event type mapping ─────────────────────────────────────────────────
@@ -137,12 +141,42 @@ export function parseClaudeCodeFile(
       .digest('hex')
       .slice(0, 32);
 
-    // Build metadata (exclude promoted fields)
+    // Build metadata with content for transcript enrichment
     const metadataObj: Record<string, unknown> = {};
     if (typeof line.error === 'string') metadataObj.error = line.error;
     else if (line.error?.message) metadataObj.error = line.error.message;
-    if (line.content !== undefined && typeof line.content === 'string') {
-      metadataObj.content_preview = line.content.slice(0, 500);
+
+    // Extract content preview from various formats
+    if (line.content !== undefined) {
+      if (typeof line.content === 'string') {
+        metadataObj.content_preview = line.content.slice(0, 500);
+      } else if (Array.isArray(line.content)) {
+        // Claude Code uses content blocks: [{type: "text", text: "..."}]
+        const textParts: string[] = [];
+        for (const block of line.content) {
+          if (block && typeof block === 'object' && 'text' in block && typeof block.text === 'string') {
+            textParts.push(block.text);
+          }
+        }
+        if (textParts.length > 0) {
+          metadataObj.content_preview = textParts.join('\n').slice(0, 500);
+        }
+      }
+    }
+
+    // Capture tool input/output for transcript enrichment
+    if (line.type === 'tool_use' && line.input) {
+      if (typeof line.input === 'object' && line.input !== null) {
+        const inp = line.input as Record<string, unknown>;
+        if (inp.command) metadataObj.command = String(inp.command).slice(0, 200);
+        if (inp.file_path) metadataObj.file_path = String(inp.file_path);
+        if (inp.pattern) metadataObj.pattern = String(inp.pattern);
+        if (inp.query) metadataObj.query = String(inp.query);
+      }
+    }
+    if (line.type === 'tool_result' && line.output !== undefined) {
+      const outputStr = typeof line.output === 'string' ? line.output : JSON.stringify(line.output);
+      metadataObj.content_preview = outputStr.slice(0, 500);
     }
 
     const event: NormalizedIngestEvent = {

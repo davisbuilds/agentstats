@@ -146,7 +146,7 @@ export function parseCodexFile(
       .digest('hex')
       .slice(0, 32);
 
-    // Build metadata
+    // Build metadata with content for transcript enrichment
     const metadataObj: Record<string, unknown> = {};
     if (line.command) metadataObj.command = line.command;
     if (line.cwd) metadataObj.cwd = line.cwd;
@@ -156,6 +156,9 @@ export function parseCodexFile(
     if (line.diff) metadataObj.diff_preview = line.diff.slice(0, 500);
     if (typeof line.error === 'string') metadataObj.error = line.error;
     else if (line.error?.message) metadataObj.error = line.error.message;
+    // Capture output for transcript enrichment
+    if (line.output) metadataObj.content_preview = String(line.output).slice(0, 500);
+    if (typeof line.content === 'string') metadataObj.content_preview = line.content.slice(0, 500);
 
     const event: NormalizedIngestEvent = {
       event_id: `import-cdx-${eventId}`,

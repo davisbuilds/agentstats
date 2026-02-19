@@ -193,3 +193,94 @@ describe('GET /api/filter-options', () => {
     assert.ok(body.models.includes('o3'));
   });
 });
+
+// ─── Transcript API ─────────────────────────────────────────────────────
+
+describe('GET /api/sessions/:id/transcript', () => {
+  test('returns ordered transcript entries from session events', async () => {
+    // Seed events with different types
+    const events = [
+      { event_id: 'tx-1', session_id: 'tx-sess', agent_type: 'claude_code', event_type: 'session_start', status: 'success', tokens_in: 0, tokens_out: 0 },
+      { event_id: 'tx-2', session_id: 'tx-sess', agent_type: 'claude_code', event_type: 'tool_use', tool_name: 'Read', status: 'success', tokens_in: 500, tokens_out: 100, model: 'claude-sonnet-4-5-20250929', metadata: { file_path: 'src/main.ts' } },
+      { event_id: 'tx-3', session_id: 'tx-sess', agent_type: 'claude_code', event_type: 'response', status: 'success', tokens_in: 2000, tokens_out: 800, model: 'claude-sonnet-4-5-20250929', cost_usd: 0.02, metadata: { content_preview: 'Here is my analysis of the file...' } },
+      { event_id: 'tx-4', session_id: 'tx-sess', agent_type: 'claude_code', event_type: 'tool_use', tool_name: 'Bash', status: 'error', tokens_in: 300, tokens_out: 50, duration_ms: 150, metadata: { command: 'npm test' } },
+      { event_id: 'tx-5', session_id: 'tx-sess', agent_type: 'claude_code', event_type: 'error', status: 'error', tokens_in: 0, tokens_out: 0, metadata: { error: 'Rate limit exceeded' } },
+      { event_id: 'tx-6', session_id: 'tx-sess', agent_type: 'claude_code', event_type: 'session_end', status: 'success', tokens_in: 0, tokens_out: 0 },
+    ];
+
+    const res = await postJson(`${baseUrl}/api/events/batch`, { events });
+    assert.ok(res.status >= 200 && res.status < 300);
+
+    const txRes = await fetch(`${baseUrl}/api/sessions/tx-sess/transcript`);
+    assert.equal(txRes.status, 200);
+
+    const body = await txRes.json() as { session_id: string; entries: Array<Record<string, unknown>> };
+    assert.equal(body.session_id, 'tx-sess');
+    assert.equal(body.entries.length, 6);
+
+    // Entries should be in chronological order (ASC)
+    assert.equal(body.entries[0].type, 'session_start');
+    assert.equal(body.entries[0].role, 'system');
+
+    assert.equal(body.entries[1].type, 'tool_use');
+    assert.equal(body.entries[1].role, 'tool');
+    assert.equal(body.entries[1].tool_name, 'Read');
+    assert.equal(body.entries[1].detail, 'src/main.ts');
+
+    assert.equal(body.entries[2].type, 'response');
+    assert.equal(body.entries[2].role, 'assistant');
+    assert.equal(body.entries[2].detail, 'Here is my analysis of the file...');
+    assert.ok((body.entries[2].cost_usd as number) > 0);
+
+    assert.equal(body.entries[3].type, 'tool_use');
+    assert.equal(body.entries[3].tool_name, 'Bash');
+    assert.equal(body.entries[3].status, 'error');
+    assert.equal(body.entries[3].detail, 'npm test');
+    assert.equal(body.entries[3].duration_ms, 150);
+
+    assert.equal(body.entries[4].type, 'error');
+    assert.equal(body.entries[4].role, 'assistant');
+    assert.equal(body.entries[4].detail, 'Rate limit exceeded');
+
+    assert.equal(body.entries[5].type, 'session_end');
+    assert.equal(body.entries[5].role, 'system');
+  });
+
+  test('returns 404 for session with no events', async () => {
+    const res = await fetch(`${baseUrl}/api/sessions/nonexistent-session/transcript`);
+    assert.equal(res.status, 404);
+  });
+
+  test('omits empty optional fields', async () => {
+    const events = [
+      { event_id: 'tx-min-1', session_id: 'tx-min', agent_type: 'codex', event_type: 'response', status: 'success', tokens_in: 0, tokens_out: 0 },
+    ];
+    await postJson(`${baseUrl}/api/events/batch`, { events });
+
+    const res = await fetch(`${baseUrl}/api/sessions/tx-min/transcript`);
+    const body = await res.json() as { entries: Array<Record<string, unknown>> };
+
+    assert.equal(body.entries.length, 1);
+    assert.equal(body.entries[0].role, 'assistant');
+    // Optional fields should not be present when empty
+    assert.equal(body.entries[0].tool_name, undefined);
+    assert.equal(body.entries[0].model, undefined);
+    assert.equal(body.entries[0].cost_usd, undefined);
+    assert.equal(body.entries[0].tokens_in, undefined);
+  });
+
+  test('includes model and token data when present', async () => {
+    const events = [
+      { event_id: 'tx-rich-1', session_id: 'tx-rich', agent_type: 'claude_code', event_type: 'response', status: 'success', tokens_in: 5000, tokens_out: 2000, model: 'claude-opus-4-6', cost_usd: 0.15 },
+    ];
+    await postJson(`${baseUrl}/api/events/batch`, { events });
+
+    const res = await fetch(`${baseUrl}/api/sessions/tx-rich/transcript`);
+    const body = await res.json() as { entries: Array<Record<string, unknown>> };
+
+    assert.equal(body.entries[0].model, 'claude-opus-4-6');
+    assert.equal(body.entries[0].tokens_in, 5000);
+    assert.equal(body.entries[0].tokens_out, 2000);
+    assert.ok((body.entries[0].cost_usd as number) > 0);
+  });
+});

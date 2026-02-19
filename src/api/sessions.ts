@@ -16,7 +16,9 @@ sessionsRouter.get('/', (req: Request, res: Response) => {
 
 // GET /api/sessions/:id - Session detail with events
 sessionsRouter.get('/:id', (req: Request, res: Response) => {
-  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+  const limit = req.query.event_limit
+    ? parseInt(req.query.event_limit as string, 10)
+    : req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
   const result = getSessionWithEvents(req.params['id'] as string, limit);
 
   if (!result.session) {

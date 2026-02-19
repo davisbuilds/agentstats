@@ -708,3 +708,31 @@ export function getCostByModel(): ModelCostRow[] {
     ORDER BY cost_usd DESC
   `).all() as ModelCostRow[];
 }
+
+// --- Session Transcript ---
+
+export interface TranscriptEvent {
+  id: number;
+  event_type: string;
+  tool_name: string | null;
+  status: string;
+  tokens_in: number;
+  tokens_out: number;
+  model: string | null;
+  cost_usd: number | null;
+  duration_ms: number | null;
+  created_at: string;
+  client_timestamp: string | null;
+  metadata: string;
+}
+
+export function getSessionTranscript(sessionId: string): TranscriptEvent[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT id, event_type, tool_name, status, tokens_in, tokens_out,
+           model, cost_usd, duration_ms, created_at, client_timestamp, metadata
+    FROM events
+    WHERE session_id = ?
+    ORDER BY created_at ASC, id ASC
+  `).all(sessionId) as TranscriptEvent[];
+}
