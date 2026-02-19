@@ -29,7 +29,7 @@ SAFETY_ENABLED = os.environ.get("AGENTSTATS_SAFETY", "1") == "1"
 # --- Safety checks (only for Bash commands) ---
 if SAFETY_ENABLED and TOOL_NAME == "Bash" and COMMAND:
     destructive = re.search(
-        r'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|--force\s+)*(/|~|\$HOME)\b',
+        r'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|--force\s+)*(/|~|\$HOME)(\s|$)',
         COMMAND,
     )
     if destructive:

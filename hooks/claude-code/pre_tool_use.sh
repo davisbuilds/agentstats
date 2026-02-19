@@ -24,7 +24,7 @@ SAFETY_ENABLED="${AGENTSTATS_SAFETY:-1}"
 # --- Safety checks (only for Bash commands) ---
 if [ "$SAFETY_ENABLED" = "1" ] && [ "$TOOL_NAME" = "Bash" ] && [ -n "$COMMAND" ]; then
   # Block destructive rm patterns
-  if echo "$COMMAND" | grep -qE 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|--force\s+)*(\/|~|\$HOME)\b'; then
+  if echo "$COMMAND" | grep -qE 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|--force\s+)*(\/|~|\$HOME)(\s|$)'; then
     # Log the blocked attempt
     send_event "$(cat <<EOF
 {
