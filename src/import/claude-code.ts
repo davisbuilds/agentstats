@@ -1,0 +1,178 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
+import type { NormalizedIngestEvent, EventType } from '../contracts/event-contract.js';
+
+// ─── Claude Code JSONL line types ──────────────────────────────────────
+
+interface ClaudeCodeUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+}
+
+interface ClaudeCodeLogLine {
+  type?: string;
+  sessionId?: string;
+  model?: string;
+  costUSD?: number;
+  usage?: ClaudeCodeUsage;
+  timestamp?: string;
+  name?: string;          // tool name for tool_use lines
+  tool_name?: string;     // alternate field
+  content?: unknown;
+  duration_ms?: number;
+  error?: string | { message?: string };
+  // tool_result fields
+  is_error?: boolean;
+  status?: string;
+}
+
+// ─── Event type mapping ─────────────────────────────────────────────────
+
+const TYPE_MAP: Record<string, EventType> = {
+  tool_use: 'tool_use',
+  tool_result: 'tool_use',
+  user: 'response',
+  assistant: 'response',
+  error: 'error',
+  session_start: 'session_start',
+  session_end: 'session_end',
+  system: 'response',
+};
+
+// ─── Discover JSONL files ──────────────────────────────────────────────
+
+export function discoverClaudeCodeLogs(baseDir?: string): string[] {
+  const claudeDir = baseDir ?? path.join(os.homedir(), '.claude');
+  const projectsDir = path.join(claudeDir, 'projects');
+  const files: string[] = [];
+
+  if (!fs.existsSync(projectsDir)) return files;
+
+  // Walk ~/.claude/projects/<encoded-dir>/<session-uuid>.jsonl
+  for (const projectEntry of fs.readdirSync(projectsDir, { withFileTypes: true })) {
+    if (!projectEntry.isDirectory()) continue;
+    const projectPath = path.join(projectsDir, projectEntry.name);
+
+    for (const fileEntry of fs.readdirSync(projectPath, { withFileTypes: true })) {
+      if (fileEntry.isFile() && fileEntry.name.endsWith('.jsonl')) {
+        files.push(path.join(projectPath, fileEntry.name));
+      }
+    }
+  }
+
+  return files.sort();
+}
+
+// ─── Parse a single JSONL file ──────────────────────────────────────────
+
+export function parseClaudeCodeFile(
+  filePath: string,
+  options?: { from?: Date; to?: Date },
+): NormalizedIngestEvent[] {
+  const events: NormalizedIngestEvent[] = [];
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const lines = content.split('\n').filter(l => l.trim());
+
+  // Extract session ID from filename (session UUID) or from first line
+  const fileBasename = path.basename(filePath, '.jsonl');
+
+  // Track cumulative cost for delta calculation
+  let prevCostUSD = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line: ClaudeCodeLogLine;
+    try {
+      line = JSON.parse(lines[i]) as ClaudeCodeLogLine;
+    } catch {
+      continue; // Skip malformed lines
+    }
+
+    if (!line.type) continue;
+
+    const sessionId = line.sessionId ?? fileBasename;
+
+    // Apply date filter
+    if (line.timestamp && options?.from) {
+      const ts = new Date(line.timestamp);
+      if (ts < options.from) continue;
+    }
+    if (line.timestamp && options?.to) {
+      const ts = new Date(line.timestamp);
+      if (ts > options.to) continue;
+    }
+
+    const eventType = TYPE_MAP[line.type] ?? 'response';
+
+    // Extract tool name
+    const toolName = line.name ?? line.tool_name;
+
+    // Compute delta cost from cumulative costUSD
+    let costDelta: number | undefined;
+    if (typeof line.costUSD === 'number' && line.costUSD > 0) {
+      costDelta = line.costUSD - prevCostUSD;
+      if (costDelta < 0) costDelta = 0; // Safety: shouldn't happen
+      prevCostUSD = line.costUSD;
+    }
+
+    // Extract token counts
+    const tokensIn = line.usage?.input_tokens ?? 0;
+    const tokensOut = line.usage?.output_tokens ?? 0;
+    const cacheRead = line.usage?.cache_read_input_tokens ?? 0;
+    const cacheWrite = line.usage?.cache_creation_input_tokens ?? 0;
+
+    // Determine status
+    let status: 'success' | 'error' | 'timeout' = 'success';
+    if (line.type === 'error' || line.is_error || line.status === 'error') {
+      status = 'error';
+    }
+
+    // Deterministic event_id for dedup on re-import
+    const eventId = crypto
+      .createHash('sha256')
+      .update(`claude-code:${sessionId}:${i}`)
+      .digest('hex')
+      .slice(0, 32);
+
+    // Build metadata (exclude promoted fields)
+    const metadataObj: Record<string, unknown> = {};
+    if (typeof line.error === 'string') metadataObj.error = line.error;
+    else if (line.error?.message) metadataObj.error = line.error.message;
+    if (line.content !== undefined && typeof line.content === 'string') {
+      metadataObj.content_preview = line.content.slice(0, 500);
+    }
+
+    const event: NormalizedIngestEvent = {
+      event_id: `import-cc-${eventId}`,
+      session_id: sessionId,
+      agent_type: 'claude_code',
+      event_type: eventType,
+      tool_name: eventType === 'tool_use' ? toolName : undefined,
+      status,
+      tokens_in: tokensIn,
+      tokens_out: tokensOut,
+      cache_read_tokens: cacheRead,
+      cache_write_tokens: cacheWrite,
+      model: line.model,
+      cost_usd: costDelta && costDelta > 0 ? costDelta : undefined,
+      duration_ms: line.duration_ms,
+      client_timestamp: line.timestamp,
+      metadata: Object.keys(metadataObj).length > 0 ? metadataObj : {},
+      source: 'import',
+    };
+
+    events.push(event);
+  }
+
+  return events;
+}
+
+// ─── File hash for import state tracking ────────────────────────────────
+
+export function hashFile(filePath: string): string {
+  const content = fs.readFileSync(filePath);
+  return crypto.createHash('sha256').update(content).digest('hex');
+}

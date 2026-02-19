@@ -15,7 +15,8 @@
     "css:watch": "tailwindcss -i src/input.css -o public/css/output.css --watch",
     "seed": "tsx scripts/seed.ts",
     "bench:ingest": "tsx scripts/benchmark-ingest.ts",
-    "recalculate-costs": "tsx scripts/recalculate-costs.ts"
+    "recalculate-costs": "tsx scripts/recalculate-costs.ts",
+    "import": "tsx scripts/import.ts"
   },
   "keywords": [
     "ai",

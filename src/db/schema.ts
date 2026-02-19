@@ -59,6 +59,18 @@ export function initSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
   `);
 
+  // Import state tracking - avoids re-importing unchanged files
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS import_state (
+      file_path TEXT PRIMARY KEY,
+      file_hash TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      events_imported INTEGER NOT NULL DEFAULT 0,
+      imported_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
   // Backward-compatible schema updates for existing local databases.
   const eventColumns = new Set<string>(
     (db.prepare(`PRAGMA table_info(events)`).all() as Array<{ name: string }>).map(col => col.name)
