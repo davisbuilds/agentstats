@@ -30,27 +30,14 @@ otelRouter.post('/v1/logs', (req: Request, res: Response) => {
   const payload = req.body as OtelLogsPayload;
   const events = parseOtelLogs(payload);
 
-  let ingested = 0;
-  let duplicates = 0;
-
   for (const event of events) {
     const row = insertEvent(event);
     if (row) {
-      ingested++;
       broadcaster.broadcast('event', row as unknown as Record<string, unknown>);
-    } else {
-      duplicates++;
     }
   }
 
-  // OTLP-compliant partial success response
-  // Empty object = full success per the OTLP spec
-  if (events.length === 0 || ingested > 0) {
-    res.status(200).json({});
-    return;
-  }
-
-  // All duplicates — still success from OTLP perspective
+  // OTLP-compliant: empty object = success
   res.status(200).json({});
 });
 
@@ -60,8 +47,6 @@ otelRouter.post('/v1/metrics', (req: Request, res: Response) => {
 
   const payload = req.body as OtelMetricsPayload;
   const deltas = parseOtelMetrics(payload);
-
-  let ingested = 0;
 
   for (const delta of deltas) {
     // Emit a synthetic llm_response event carrying the metric delta values.
@@ -88,7 +73,6 @@ otelRouter.post('/v1/metrics', (req: Request, res: Response) => {
     });
 
     if (row) {
-      ingested++;
       broadcaster.broadcast('event', row as unknown as Record<string, unknown>);
     }
   }

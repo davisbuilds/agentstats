@@ -1,5 +1,6 @@
 import { getDb } from './connection.js';
 import { config } from '../config.js';
+import { pricingRegistry } from '../pricing/index.js';
 import type { EventStatus, EventType, EventSource } from '../contracts/event-contract.js';
 
 // --- Agents ---
@@ -278,6 +279,18 @@ export function insertEvent(event: {
   // Handle session lifecycle events
   if (event.event_type === 'session_end') {
     endSession(event.session_id);
+  }
+
+  // Auto-calculate cost if model + tokens present but cost not provided
+  if (event.model && (event.tokens_in > 0 || event.tokens_out > 0)) {
+    if (event.cost_usd === undefined || event.cost_usd === null) {
+      event.cost_usd = pricingRegistry.calculate(event.model, {
+        input: event.tokens_in,
+        output: event.tokens_out,
+        cacheRead: event.cache_read_tokens,
+        cacheWrite: event.cache_write_tokens,
+      });
+    }
   }
 
   const metadata = truncateMetadata(event.metadata);

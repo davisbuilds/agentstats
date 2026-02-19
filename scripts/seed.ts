@@ -193,7 +193,7 @@ async function main() {
     const health = await fetch(`${BASE_URL}/api/health`);
     if (!health.ok) throw new Error(`Health check failed: ${health.status}`);
     console.log('Server is healthy.\n');
-  } catch (err) {
+  } catch {
     console.error(`Cannot connect to AgentStats at ${BASE_URL}. Is the server running?`);
     process.exit(1);
   }

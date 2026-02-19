@@ -1,0 +1,94 @@
+{
+  "provider": "openai",
+  "lastUpdated": "2026-02-19T00:00:00Z",
+  "models": {
+    "o3": {
+      "aliases": ["o3-2025-04-16"],
+      "inputCostPerMTok": 2,
+      "outputCostPerMTok": 8,
+      "cacheReadCostPerMTok": 1,
+      "cacheWriteCostPerMTok": 2,
+      "deprecated": false
+    },
+    "o3-mini": {
+      "aliases": ["o3-mini-2025-01-31"],
+      "inputCostPerMTok": 1.1,
+      "outputCostPerMTok": 4.4,
+      "cacheReadCostPerMTok": 0.55,
+      "cacheWriteCostPerMTok": 1.1,
+      "deprecated": false
+    },
+    "o4-mini": {
+      "aliases": ["o4-mini-2025-04-16"],
+      "inputCostPerMTok": 1.1,
+      "outputCostPerMTok": 4.4,
+      "cacheReadCostPerMTok": 0.275,
+      "cacheWriteCostPerMTok": 0.55,
+      "deprecated": false
+    },
+    "o1": {
+      "aliases": ["o1-2024-12-17"],
+      "inputCostPerMTok": 15,
+      "outputCostPerMTok": 60,
+      "cacheReadCostPerMTok": 7.5,
+      "cacheWriteCostPerMTok": 15,
+      "deprecated": false
+    },
+    "o1-mini": {
+      "aliases": ["o1-mini-2024-09-12"],
+      "inputCostPerMTok": 1.1,
+      "outputCostPerMTok": 4.4,
+      "cacheReadCostPerMTok": 0.55,
+      "cacheWriteCostPerMTok": 1.1,
+      "deprecated": true
+    },
+    "gpt-4.1": {
+      "aliases": ["gpt-4.1-2025-04-14"],
+      "inputCostPerMTok": 2,
+      "outputCostPerMTok": 8,
+      "cacheReadCostPerMTok": 0.5,
+      "cacheWriteCostPerMTok": 2,
+      "deprecated": false
+    },
+    "gpt-4.1-mini": {
+      "aliases": ["gpt-4.1-mini-2025-04-14"],
+      "inputCostPerMTok": 0.4,
+      "outputCostPerMTok": 1.6,
+      "cacheReadCostPerMTok": 0.1,
+      "cacheWriteCostPerMTok": 0.4,
+      "deprecated": false
+    },
+    "gpt-4.1-nano": {
+      "aliases": ["gpt-4.1-nano-2025-04-14"],
+      "inputCostPerMTok": 0.1,
+      "outputCostPerMTok": 0.4,
+      "cacheReadCostPerMTok": 0.025,
+      "cacheWriteCostPerMTok": 0.1,
+      "deprecated": false
+    },
+    "gpt-4o": {
+      "aliases": ["gpt-4o-2024-11-20", "gpt-4o-2024-08-06"],
+      "inputCostPerMTok": 2.5,
+      "outputCostPerMTok": 10,
+      "cacheReadCostPerMTok": 1.25,
+      "cacheWriteCostPerMTok": 2.5,
+      "deprecated": false
+    },
+    "gpt-4o-mini": {
+      "aliases": ["gpt-4o-mini-2024-07-18"],
+      "inputCostPerMTok": 0.15,
+      "outputCostPerMTok": 0.6,
+      "cacheReadCostPerMTok": 0.075,
+      "cacheWriteCostPerMTok": 0.15,
+      "deprecated": false
+    },
+    "gpt-4-turbo": {
+      "aliases": ["gpt-4-turbo-2024-04-09"],
+      "inputCostPerMTok": 10,
+      "outputCostPerMTok": 30,
+      "cacheReadCostPerMTok": 5,
+      "cacheWriteCostPerMTok": 10,
+      "deprecated": true
+    }
+  }
+}

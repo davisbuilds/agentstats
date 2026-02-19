@@ -8,6 +8,7 @@ public/css/output.css
 
 # runtime data
 data/
+!src/pricing/data/
 *.db
 *.db-wal
 *.db-shm

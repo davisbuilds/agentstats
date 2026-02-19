@@ -493,23 +493,6 @@ describe('POST /api/otel/v1/metrics', () => {
   });
 
   test('ingests cost delta metrics', async () => {
-    const payload = buildMetricsPayload({
-      serviceName: 'claude_code',
-      resourceAttrs: [
-        { key: 'gen_ai.session.id', value: { stringValue: 'sess-cost-1' } },
-      ],
-      metrics: [{
-        name: 'claude_code.cost.usage',
-        dataPoints: [{
-          value: 0.05,
-          attributes: [
-            { key: 'model', value: { stringValue: 'claude-opus-4-20250514' } },
-          ],
-        }],
-        aggregationTemporality: 1,
-      }],
-    });
-
     // Build with asDouble since cost is fractional
     const rawPayload = {
       resourceMetrics: [{

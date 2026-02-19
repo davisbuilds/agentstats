@@ -180,8 +180,8 @@ async function ensureServerAvailable(baseUrl: string, timeoutMs: number): Promis
     if (!res.ok) {
       throw new Error(`health check returned ${res.status}`);
     }
-  } catch (err) {
-    throw new Error(`Cannot reach ${baseUrl}. Ensure AgentStats is running. (${String(err)})`);
+  } catch (cause) {
+    throw new Error(`Cannot reach ${baseUrl}. Ensure AgentStats is running.`, { cause });
   } finally {
     clearTimeout(timeout);
   }

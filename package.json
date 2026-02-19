@@ -6,14 +6,16 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && pnpm run css:build",
+    "build": "tsc && cp -r src/pricing/data dist/pricing/data && pnpm run css:build",
     "start": "node dist/server.js",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts' 'scripts/**/*.ts'",
     "test": "node --import tsx --test tests/**/*.test.ts",
     "test:watch": "node --import tsx --test --watch tests/**/*.test.ts",
     "css:build": "tailwindcss -i src/input.css -o public/css/output.css --minify",
     "css:watch": "tailwindcss -i src/input.css -o public/css/output.css --watch",
     "seed": "tsx scripts/seed.ts",
-    "bench:ingest": "tsx scripts/benchmark-ingest.ts"
+    "bench:ingest": "tsx scripts/benchmark-ingest.ts",
+    "recalculate-costs": "tsx scripts/recalculate-costs.ts"
   },
   "keywords": [
     "ai",
@@ -35,12 +37,15 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/cli": "^4.1.18",
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^25.2.3",
+    "eslint": "^10.0.0",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.0"
   }
 }
