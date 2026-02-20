@@ -88,8 +88,9 @@ function walkDir(dir: string, files: string[]): void {
 
 // ─── Read model from config.toml ────────────────────────────────────────
 
-function readCodexModel(): string | undefined {
-  const configPath = path.join(os.homedir(), '.codex', 'config.toml');
+function readCodexModel(codexHome?: string): string | undefined {
+  const base = codexHome ?? process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex');
+  const configPath = path.join(base, 'config.toml');
   try {
     const content = fs.readFileSync(configPath, 'utf-8');
     // Simple parse for top-level model = "..."
@@ -104,13 +105,13 @@ function readCodexModel(): string | undefined {
 
 export function parseCodexFile(
   filePath: string,
-  options?: { from?: Date; to?: Date },
+  options?: { from?: Date; to?: Date; codexDir?: string },
 ): NormalizedIngestEvent[] {
   const events: NormalizedIngestEvent[] = [];
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n').filter(l => l.trim());
 
-  const defaultModel = readCodexModel();
+  const defaultModel = readCodexModel(options?.codexDir);
 
   // First pass: extract session metadata
   let sessionId: string | undefined;

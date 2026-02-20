@@ -85,7 +85,7 @@ export function getSessions(filters: {
       COALESCE((SELECT SUM(e.tokens_in) FROM events e WHERE e.session_id = s.id), 0) as tokens_in,
       COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out,
       COALESCE((SELECT SUM(e.cost_usd) FROM events e WHERE e.session_id = s.id), 0) as total_cost_usd,
-      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited
+      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit', 'apply_patch', 'write_stdin') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited
     FROM sessions s
     ${where}
     ORDER BY
@@ -106,7 +106,7 @@ export function getSessionWithEvents(sessionId: string, eventLimit: number = 10)
       COALESCE((SELECT SUM(e.tokens_in) FROM events e WHERE e.session_id = s.id), 0) as tokens_in,
       COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out,
       COALESCE((SELECT SUM(e.cost_usd) FROM events e WHERE e.session_id = s.id), 0) as total_cost_usd,
-      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited
+      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit', 'apply_patch', 'write_stdin') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited
     FROM sessions s WHERE s.id = ?
   `).get(sessionId) as SessionRow | undefined;
 
@@ -676,7 +676,7 @@ export function getCostOverTime(filters?: { since?: string; agentType?: string }
     params.push(filters.agentType);
   }
   if (filters?.since) {
-    conditions.push('created_at >= ?');
+    conditions.push('COALESCE(client_timestamp, created_at) >= ?');
     params.push(filters.since);
   }
 

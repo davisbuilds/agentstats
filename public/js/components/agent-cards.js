@@ -85,15 +85,23 @@ const AgentCards = {
       entry.events.pop();
     }
 
-    // Track unique files edited
-    if (['Edit', 'Write', 'MultiEdit'].includes(event.tool_name) && event.metadata?.file_path) {
-      if (!entry.session._editedFiles) entry.session._editedFiles = new Set();
+    // Track unique files edited (seed from server count on first incremental update)
+    if (['Edit', 'Write', 'MultiEdit', 'apply_patch', 'write_stdin'].includes(event.tool_name) && event.metadata?.file_path) {
+      if (!entry.session._editedFiles) {
+        entry.session._editedFiles = new Set();
+        // Preserve server-side count as a baseline
+        entry.session._filesEditedBaseline = entry.session.files_edited || 0;
+      }
       entry.session._editedFiles.add(event.metadata.file_path);
-      entry.session.files_edited = entry.session._editedFiles.size;
+      entry.session.files_edited = Math.max(
+        entry.session._filesEditedBaseline || 0,
+        entry.session._editedFiles.size,
+      );
     }
 
+    // Claude Code sessions go idle on session_end; other agents end immediately
     if (event.event_type === 'session_end') {
-      entry.session.status = 'idle';
+      entry.session.status = event.agent_type === 'claude_code' ? 'idle' : 'ended';
     }
 
     this.renderAll();
@@ -229,7 +237,7 @@ const AgentCards = {
             ${this.statusBadge(session.status)}
           </div>
           <div class="text-sm font-medium text-gray-100">
-            ${session.project || 'unknown'} ${session.branch ? `/ <span class="text-gray-400">${session.branch}</span>` : ''}
+            ${session.project || session.id.slice(0, 12) + '...'} ${session.branch ? `/ <span class="text-gray-400">${session.branch}</span>` : ''}
           </div>
           <div class="text-xs text-gray-500 mt-0.5">
             ${session.event_count || 0} events${session.files_edited ? ` · ${session.files_edited} file${session.files_edited !== 1 ? 's' : ''} edited` : ''}${session.total_cost_usd ? ` · ${this.formatCost(session.total_cost_usd)}` : ''} · ${this.formatDuration(session.started_at)}

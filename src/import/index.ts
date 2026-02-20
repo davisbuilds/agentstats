@@ -116,7 +116,7 @@ function processFile(
 
   // Parse the file
   const parseFn = source === 'claude-code' ? parseClaudeCodeFile : parseCodexFile;
-  const events = parseFn(filePath, { from: options.from, to: options.to });
+  const events = parseFn(filePath, { from: options.from, to: options.to, codexDir: options.codexDir });
 
   // Import events
   const { imported, duplicates } = importEvents(events, options.dryRun ?? false);
