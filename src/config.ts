@@ -15,4 +15,5 @@ export const config = {
   statsIntervalMs: parseEnvInt(process.env.AGENTSTATS_STATS_INTERVAL, 5000, 250),
   maxSseClients: parseEnvInt(process.env.AGENTSTATS_MAX_SSE_CLIENTS, 50, 1),
   sseHeartbeatMs: parseEnvInt(process.env.AGENTSTATS_SSE_HEARTBEAT_MS, 30000, 1000),
+  autoImportIntervalMinutes: parseEnvInt(process.env.AGENTSTATS_AUTO_IMPORT_MINUTES, 10, 0),
 };

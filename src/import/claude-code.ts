@@ -192,6 +192,21 @@ export function parseClaudeCodeFile(
         if (inp.file_path) metadataObj.file_path = String(inp.file_path);
         if (inp.pattern) metadataObj.pattern = String(inp.pattern);
         if (inp.query) metadataObj.query = String(inp.query);
+
+        // Compute lines added/removed for edit tools
+        const tn = toolName ?? '';
+        if (tn === 'Edit' || tn === 'MultiEdit') {
+          if (typeof inp.old_string === 'string' && inp.old_string) {
+            metadataObj.lines_removed = inp.old_string.split('\n').length;
+          }
+          if (typeof inp.new_string === 'string' && inp.new_string) {
+            metadataObj.lines_added = inp.new_string.split('\n').length;
+          }
+        } else if (tn === 'Write') {
+          if (typeof inp.content === 'string' && inp.content) {
+            metadataObj.lines_added = inp.content.split('\n').length;
+          }
+        }
       }
     }
     if (line.type === 'tool_result' && line.output !== undefined) {

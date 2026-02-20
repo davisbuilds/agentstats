@@ -66,9 +66,11 @@ const FilterBar = {
   },
 
   makeSelect(id, label, options, stateKey) {
-    const optionsHtml = options.map(o =>
-      `<option value="${o}"${this.state[stateKey] === o ? ' selected' : ''}>${o}</option>`
-    ).join('');
+    const optionsHtml = options.map(o => {
+      const val = typeof o === 'object' ? o.value : o;
+      const text = typeof o === 'object' ? o.label : o;
+      return `<option value="${val}"${this.state[stateKey] === val ? ' selected' : ''}>${text}</option>`;
+    }).join('');
     return `
       <select id="${id}" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-[100px]">
         <option value="">${label}</option>

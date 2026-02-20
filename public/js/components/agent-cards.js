@@ -4,7 +4,7 @@ const AgentCards = {
   MAX_EVENTS_PER_CARD: 8,
 
   agentColors: {
-    claude_code: { label: 'Claude Code', border: 'border-l-purple-500', badge: 'bg-purple-500/20 text-purple-300', dot: 'text-purple-400' },
+    claude_code: { label: 'Claude Code', border: 'border-l-orange-500', badge: 'bg-orange-500/20 text-orange-300', dot: 'text-orange-400' },
     codex: { label: 'Codex', border: 'border-l-emerald-500', badge: 'bg-emerald-500/20 text-emerald-300', dot: 'text-emerald-400' },
     default: { label: 'Agent', border: 'border-l-blue-500', badge: 'bg-blue-500/20 text-blue-300', dot: 'text-blue-400' },
   },
@@ -98,6 +98,11 @@ const AgentCards = {
         entry.session._editedFiles.size,
       );
     }
+
+    // Track lines added/removed from metadata
+    const meta = typeof event.metadata === 'string' ? (() => { try { return JSON.parse(event.metadata); } catch { return {}; } })() : (event.metadata || {});
+    if (meta.lines_added) entry.session.lines_added = (entry.session.lines_added || 0) + meta.lines_added;
+    if (meta.lines_removed) entry.session.lines_removed = (entry.session.lines_removed || 0) + meta.lines_removed;
 
     // Claude Code sessions go idle on session_end; other agents end immediately
     if (event.event_type === 'session_end') {
@@ -240,7 +245,7 @@ const AgentCards = {
             ${session.project || session.id.slice(0, 12) + '...'} ${session.branch ? `/ <span class="text-gray-400">${session.branch}</span>` : ''}
           </div>
           <div class="text-xs text-gray-500 mt-0.5">
-            ${session.event_count || 0} events${session.files_edited ? ` · ${session.files_edited} file${session.files_edited !== 1 ? 's' : ''} edited` : ''}${session.total_cost_usd ? ` · ${this.formatCost(session.total_cost_usd)}` : ''} · ${this.formatDuration(session.started_at)}
+            ${session.event_count || 0} events${session.files_edited ? ` · <span class="text-gray-300">${session.files_edited} file${session.files_edited !== 1 ? 's' : ''}</span>${session.lines_added ? ` <span class="text-green-400">+${session.lines_added}</span>` : ''}${session.lines_removed ? ` <span class="text-red-400">-${session.lines_removed}</span>` : ''}` : ''}${session.total_cost_usd ? ` · ${this.formatCost(session.total_cost_usd)}` : ''} · ${this.formatDuration(session.started_at)}
           </div>
         </div>
 

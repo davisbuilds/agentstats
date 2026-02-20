@@ -84,9 +84,12 @@ const CostDashboard = {
     if (!model) return 'unknown';
     // Shorten common model names
     return model
-      .replace('claude-sonnet-4-5-20250929', 'sonnet-4.5')
-      .replace('claude-opus-4-6', 'opus-4.6')
-      .replace('claude-haiku-4-5-20251001', 'haiku-4.5')
+      .replace(/claude-sonnet-4-5-\d+/, 'sonnet-4.5')
+      .replace(/claude-opus-4-6(-\d+)?/, 'opus-4.6')
+      .replace(/claude-haiku-4-5-\d+/, 'haiku-4.5')
+      .replace(/claude-3-5-sonnet-\d+/, 'sonnet-3.5')
+      .replace(/claude-3-5-haiku-\d+/, 'haiku-3.5')
+      .replace(/claude-3-opus-\d+/, 'opus-3')
       .replace(/^claude-/, 'c-')
       .replace(/^gpt-/, 'gpt-');
   },

@@ -51,12 +51,15 @@ export interface SessionRow {
   tokens_out: number;
   total_cost_usd: number;
   files_edited: number;
+  lines_added: number;
+  lines_removed: number;
 }
 
 export function getSessions(filters: {
   status?: string;
   excludeStatus?: string;
   agentType?: string;
+  since?: string;
   limit?: number;
 }): SessionRow[] {
   const db = getDb();
@@ -75,6 +78,10 @@ export function getSessions(filters: {
     conditions.push('s.agent_type = ?');
     params.push(filters.agentType);
   }
+  if (filters.since) {
+    conditions.push('s.last_event_at >= ?');
+    params.push(filters.since);
+  }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const limit = filters.limit || 50;
@@ -85,7 +92,9 @@ export function getSessions(filters: {
       COALESCE((SELECT SUM(e.tokens_in) FROM events e WHERE e.session_id = s.id), 0) as tokens_in,
       COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out,
       COALESCE((SELECT SUM(e.cost_usd) FROM events e WHERE e.session_id = s.id), 0) as total_cost_usd,
-      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit', 'apply_patch', 'write_stdin') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited
+      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit', 'apply_patch', 'write_stdin') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited,
+      COALESCE((SELECT SUM(CAST(json_extract(e.metadata, '$.lines_added') AS INTEGER)) FROM events e WHERE e.session_id = s.id AND json_extract(e.metadata, '$.lines_added') IS NOT NULL), 0) as lines_added,
+      COALESCE((SELECT SUM(CAST(json_extract(e.metadata, '$.lines_removed') AS INTEGER)) FROM events e WHERE e.session_id = s.id AND json_extract(e.metadata, '$.lines_removed') IS NOT NULL), 0) as lines_removed
     FROM sessions s
     ${where}
     ORDER BY
@@ -106,7 +115,9 @@ export function getSessionWithEvents(sessionId: string, eventLimit: number = 10)
       COALESCE((SELECT SUM(e.tokens_in) FROM events e WHERE e.session_id = s.id), 0) as tokens_in,
       COALESCE((SELECT SUM(e.tokens_out) FROM events e WHERE e.session_id = s.id), 0) as tokens_out,
       COALESCE((SELECT SUM(e.cost_usd) FROM events e WHERE e.session_id = s.id), 0) as total_cost_usd,
-      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit', 'apply_patch', 'write_stdin') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited
+      COALESCE((SELECT COUNT(DISTINCT json_extract(e.metadata, '$.file_path')) FROM events e WHERE e.session_id = s.id AND e.tool_name IN ('Edit', 'Write', 'MultiEdit', 'apply_patch', 'write_stdin') AND json_extract(e.metadata, '$.file_path') IS NOT NULL), 0) as files_edited,
+      COALESCE((SELECT SUM(CAST(json_extract(e.metadata, '$.lines_added') AS INTEGER)) FROM events e WHERE e.session_id = s.id AND json_extract(e.metadata, '$.lines_added') IS NOT NULL), 0) as lines_added,
+      COALESCE((SELECT SUM(CAST(json_extract(e.metadata, '$.lines_removed') AS INTEGER)) FROM events e WHERE e.session_id = s.id AND json_extract(e.metadata, '$.lines_removed') IS NOT NULL), 0) as lines_removed
     FROM sessions s WHERE s.id = ?
   `).get(sessionId) as SessionRow | undefined;
 
@@ -549,7 +560,7 @@ export interface FilterOptions {
   tool_names: string[];
   models: string[];
   projects: string[];
-  branches: string[];
+  branches: Array<{ value: string; label: string }>;
   sources: string[];
 }
 
@@ -576,9 +587,17 @@ export function getFilterOptions(): FilterOptions {
     'SELECT DISTINCT project FROM sessions WHERE project IS NOT NULL ORDER BY project'
   ).all() as { project: string }[]).map(r => r.project);
 
-  const branches = (db.prepare(
-    'SELECT DISTINCT branch FROM sessions WHERE branch IS NOT NULL ORDER BY last_event_at DESC'
-  ).all() as { branch: string }[]).map(r => r.branch);
+  const branchData = db.prepare(
+    `SELECT branch, project, MAX(last_event_at) as latest
+     FROM sessions
+     WHERE branch IS NOT NULL AND branch != 'HEAD'
+     GROUP BY branch
+     ORDER BY latest DESC`
+  ).all() as { branch: string; project: string | null; latest: string }[];
+  const branches = branchData.map(r => ({
+    value: r.branch,
+    label: r.project ? `${r.project} / ${r.branch}` : r.branch,
+  }));
 
   const sources = (db.prepare(
     'SELECT DISTINCT source FROM events WHERE source IS NOT NULL ORDER BY source'

@@ -30,28 +30,43 @@ async function reloadData(filters) {
     const eventsParams = new URLSearchParams(filters);
     eventsParams.set('limit', '100');
 
-    // Build sessions query — exclude ended historical sessions
-    const sessionsParams = new URLSearchParams();
-    if (filters.agent_type) sessionsParams.set('agent_type', filters.agent_type);
-    sessionsParams.set('limit', '20');
-    sessionsParams.set('exclude_status', 'ended');
+    // Build sessions queries: active/idle + recently ended (last 30min)
+    const activeParams = new URLSearchParams();
+    if (filters.agent_type) activeParams.set('agent_type', filters.agent_type);
+    activeParams.set('limit', '20');
+    activeParams.set('exclude_status', 'ended');
 
-    const [statsRes, eventsRes, sessionsRes] = await Promise.all([
+    const recentParams = new URLSearchParams();
+    if (filters.agent_type) recentParams.set('agent_type', filters.agent_type);
+    recentParams.set('limit', '10');
+    recentParams.set('status', 'ended');
+    recentParams.set('since', new Date(Date.now() - 30 * 60000).toISOString());
+
+    const [statsRes, eventsRes, activeRes, recentRes] = await Promise.all([
       fetch(`/api/stats${qsSep}`),
       fetch(`/api/events?${eventsParams}`),
-      fetch(`/api/sessions?${sessionsParams}`),
+      fetch(`/api/sessions?${activeParams}`),
+      fetch(`/api/sessions?${recentParams}`),
     ]);
 
-    const [stats, eventsData, sessionsData] = await Promise.all([
+    const [stats, eventsData, activeData, recentData] = await Promise.all([
       statsRes.json(),
       eventsRes.json(),
-      sessionsRes.json(),
+      activeRes.json(),
+      recentRes.json(),
     ]);
+
+    // Merge active/idle + recently ended, deduplicate by id
+    const seen = new Set();
+    const allSessions = [];
+    for (const s of [...(activeData.sessions || []), ...(recentData.sessions || [])]) {
+      if (!seen.has(s.id)) { seen.add(s.id); allSessions.push(s); }
+    }
 
     // Update core components
     StatsBar.update(stats);
     EventFeed.initFromData(eventsData.events || []);
-    AgentCards.initFromData(sessionsData.sessions || [], eventsData.events || []);
+    AgentCards.initFromData(allSessions, eventsData.events || []);
 
     // Load cost and tool analytics in parallel
     await Promise.all([

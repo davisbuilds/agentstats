@@ -172,6 +172,14 @@ const SessionDetail = {
         </div>
       </div>
 
+      <!-- Code changes -->
+      ${session.files_edited > 0 ? `
+      <div class="bg-gray-800 rounded-lg p-3 mb-6 flex items-center gap-3">
+        <span class="text-sm font-medium text-gray-300">${session.files_edited} file${session.files_edited !== 1 ? 's' : ''}</span>
+        ${session.lines_added ? `<span class="text-sm font-medium text-green-400">+${session.lines_added}</span>` : ''}
+        ${session.lines_removed ? `<span class="text-sm font-medium text-red-400">-${session.lines_removed}</span>` : ''}
+      </div>` : ''}
+
       <!-- Breakdowns -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <!-- Tool usage -->

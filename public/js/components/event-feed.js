@@ -6,7 +6,7 @@ const EventFeed = {
   pendingCount: 0,
 
   agentLabels: {
-    claude_code: { text: 'Claude', class: 'text-purple-400' },
+    claude_code: { text: 'Claude', class: 'text-orange-400' },
     codex: { text: 'Codex', class: 'text-emerald-400' },
   },
 
