@@ -332,9 +332,29 @@ function parseLogRecord(
       if (!extracted.has(k)) remaining[k] = v;
     }
     if (Object.keys(remaining).length > 0) metadata = remaining;
-  } else if (eventType === 'user_prompt' && logRecord.body?.stringValue) {
-    // Plain-string body on user_prompt events (e.g. Codex OTEL) — store as message
+  } else if (logRecord.body?.stringValue) {
+    // Plain-string body (non-JSON) — store as message
     metadata = { message: logRecord.body.stringValue };
+  }
+
+  // For user_prompt events, ensure we capture the prompt text from all possible sources
+  if (eventType === 'user_prompt') {
+    const meta = (typeof metadata === 'object' && metadata !== null) ? metadata as Record<string, unknown> : {};
+    if (!meta.message) {
+      // Try attributes: gen_ai.prompt, message, prompt, codex.prompt
+      const promptText =
+        getAttr(logRecord.attributes, 'gen_ai.prompt')
+        ?? getAttr(logRecord.attributes, 'message')
+        ?? getAttr(logRecord.attributes, 'prompt')
+        ?? getAttr(logRecord.attributes, 'codex.prompt')
+        ?? getAttr(logRecord.attributes, 'gen_ai.content.prompt');
+      if (promptText) {
+        metadata = { ...meta, message: promptText };
+      } else if (logRecord.body?.stringValue && !bodyJson) {
+        // Non-JSON string body — already handled above, but guard for edge cases
+        metadata = { ...meta, message: logRecord.body.stringValue };
+      }
+    }
   }
 
   return {

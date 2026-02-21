@@ -9,9 +9,17 @@ const CostDashboard = {
     return '$' + n.toFixed(2);
   },
 
+  costWindow: '60d',  // default rolling window
+
   async load(filters) {
     try {
-      const qs = new URLSearchParams(filters || {}).toString();
+      const params = new URLSearchParams(filters || {});
+      // Apply default 60d window for cost data unless a time filter is already set
+      if (!params.has('since') && this.costWindow !== 'all') {
+        const days = parseInt(this.costWindow, 10) || 60;
+        params.set('since', new Date(Date.now() - days * 86400000).toISOString());
+      }
+      const qs = params.toString();
       const res = await fetch(`/api/stats/cost${qs ? '?' + qs : ''}`);
       this.data = await res.json();
       this.render();
@@ -78,6 +86,17 @@ const CostDashboard = {
       <!-- Cost Timeline -->
       ${timeline.length > 1 ? this.renderTimeline(timeline) : ''}
     `;
+
+    // Wire cost window picker
+    const picker = document.getElementById('cost-window-picker');
+    if (picker) {
+      picker.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-cost-window]');
+        if (!btn) return;
+        this.costWindow = btn.dataset.costWindow;
+        this.load(FilterBar.getActiveFilters());
+      });
+    }
   },
 
   shortModel(model) {
@@ -104,44 +123,102 @@ const CostDashboard = {
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
 
-    const points = timeline.map((b, i) => {
-      const x = padding.left + (i / (timeline.length - 1)) * chartW;
-      const y = padding.top + chartH - (b.cost_usd / maxCost) * chartH;
-      return `${x},${y}`;
-    }).join(' ');
+    const pts = timeline.map((b, i) => ({
+      x: padding.left + (i / (timeline.length - 1)) * chartW,
+      y: padding.top + chartH - (b.cost_usd / maxCost) * chartH,
+    }));
 
-    // Fill area under the line
-    const areaPoints = `${padding.left},${padding.top + chartH} ${points} ${padding.left + chartW},${padding.top + chartH}`;
+    // Build smooth cubic bezier path
+    const smoothPath = this.smoothLine(pts);
 
-    // X-axis labels (first, middle, last)
-    const labels = [];
-    if (timeline.length > 0) {
-      labels.push({ x: padding.left, text: this.formatBucketTime(timeline[0].bucket) });
-      if (timeline.length > 2) {
-        const mid = Math.floor(timeline.length / 2);
-        labels.push({ x: padding.left + (mid / (timeline.length - 1)) * chartW, text: this.formatBucketTime(timeline[mid].bucket) });
+    // Fill area: move to bottom-left, line to first point, smooth curve, line to bottom-right, close
+    const fillPath = `M${pts[0].x},${padding.top + chartH} L${pts[0].x},${pts[0].y} ${smoothPath.slice(smoothPath.indexOf('C'))} L${pts[pts.length - 1].x},${padding.top + chartH} Z`;
+
+    // Weekly grid lines aligned to Mondays
+    const tStart = new Date(timeline[0].bucket).getTime();
+    const tEnd = new Date(timeline[timeline.length - 1].bucket).getTime();
+    const tRange = tEnd - tStart;
+
+    const mondays = [];
+    // Find the first Monday on or after tStart
+    const d0 = new Date(tStart);
+    d0.setHours(0, 0, 0, 0);
+    const dayOfWeek = d0.getDay(); // 0=Sun, 1=Mon
+    const daysUntilMon = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+    const firstMon = new Date(d0);
+    firstMon.setDate(firstMon.getDate() + daysUntilMon);
+
+    for (let m = new Date(firstMon); m.getTime() <= tEnd; m.setDate(m.getDate() + 7)) {
+      const frac = (m.getTime() - tStart) / tRange;
+      if (frac > 0.02 && frac < 0.98) { // skip if too close to edges
+        mondays.push({
+          x: padding.left + frac * chartW,
+          text: m.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        });
       }
-      labels.push({ x: padding.left + chartW, text: this.formatBucketTime(timeline[timeline.length - 1].bucket) });
     }
+
+    // Edge labels (always show first and last dates)
+    const edgeLabels = [
+      { x: padding.left, text: this.formatBucketDate(timeline[0].bucket), anchor: 'start' },
+      { x: padding.left + chartW, text: this.formatBucketDate(timeline[timeline.length - 1].bucket), anchor: 'end' },
+    ];
+
+    const windowOptions = [
+      { value: '30d', label: '30d' },
+      { value: '60d', label: '60d' },
+      { value: '90d', label: '90d' },
+      { value: 'all', label: 'All' },
+    ];
+    const windowPicker = windowOptions.map(o =>
+      `<button data-cost-window="${o.value}" class="px-1.5 py-0.5 rounded text-[10px] ${this.costWindow === o.value ? 'bg-gray-700 text-gray-200' : 'text-gray-500 hover:text-gray-300'}">${o.label}</button>`
+    ).join('');
 
     return `
       <div class="bg-gray-900 rounded-lg border border-gray-700 p-4 mt-4">
-        <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Spend Over Time</div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs text-gray-500 uppercase tracking-wider">Spend Over Time</div>
+          <div class="flex gap-1" id="cost-window-picker">${windowPicker}</div>
+        </div>
         <svg viewBox="0 0 ${width} ${height}" class="w-full" preserveAspectRatio="none">
-          <polygon points="${areaPoints}" fill="rgba(59,130,246,0.1)" />
-          <polyline points="${points}" fill="none" stroke="rgb(59,130,246)" stroke-width="1.5" />
-          ${labels.map(l => `<text x="${l.x}" y="${height - 2}" fill="#6b7280" font-size="9" text-anchor="middle">${l.text}</text>`).join('')}
+          ${mondays.map(m => `<line x1="${m.x}" y1="${padding.top}" x2="${m.x}" y2="${padding.top + chartH}" stroke="#374151" stroke-width="0.5" />`).join('')}
+          <path d="${fillPath}" fill="rgba(59,130,246,0.1)" />
+          <path d="${smoothPath}" fill="none" stroke="rgb(59,130,246)" stroke-width="1.5" />
+          ${mondays.map(m => `<text x="${m.x}" y="${height - 2}" fill="#6b7280" font-size="9" text-anchor="middle">${m.text}</text>`).join('')}
+          ${edgeLabels.map(l => `<text x="${l.x}" y="${height - 2}" fill="#6b7280" font-size="9" text-anchor="${l.anchor}">${l.text}</text>`).join('')}
         </svg>
       </div>
     `;
   },
 
-  formatBucketTime(bucket) {
+  // Attempt monotone cubic interpolation for a smooth SVG path
+  smoothLine(pts) {
+    if (pts.length < 2) return '';
+    if (pts.length === 2) return `M${pts[0].x},${pts[0].y} L${pts[1].x},${pts[1].y}`;
+
+    let d = `M${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(i - 1, 0)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(i + 2, pts.length - 1)];
+
+      const tension = 0.3;
+      const cp1x = p1.x + (p2.x - p0.x) * tension;
+      const cp1y = p1.y + (p2.y - p0.y) * tension;
+      const cp2x = p2.x - (p3.x - p1.x) * tension;
+      const cp2y = p2.y - (p3.y - p1.y) * tension;
+
+      d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+    }
+    return d;
+  },
+
+  formatBucketDate(bucket) {
     if (!bucket) return '';
     try {
       const d = new Date(bucket);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-        d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch { return bucket; }
   },
 };

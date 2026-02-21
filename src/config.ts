@@ -56,7 +56,7 @@ function parseUsageMonitorConfig(): Record<string, AgentUsageConfig> {
       sessionWindowHours: parseEnvInt(process.env.AGENTSTATS_SESSION_WINDOW_HOURS_CODEX, defaultWindowHours, 1),
       sessionLimit: parseEnvFloat(process.env.AGENTSTATS_SESSION_COST_LIMIT_CODEX, 100, 0),
       extendedWindowHours: parseEnvInt(process.env.AGENTSTATS_EXTENDED_WINDOW_HOURS_CODEX, 168, 1),
-      extendedLimit: parseEnvFloat(process.env.AGENTSTATS_EXTENDED_COST_LIMIT_CODEX, 500, 0),
+      extendedLimit: parseEnvFloat(process.env.AGENTSTATS_EXTENDED_COST_LIMIT_CODEX, 1500, 0),
     },
     _default: {
       limitType: 'tokens',
