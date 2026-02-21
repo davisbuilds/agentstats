@@ -168,7 +168,8 @@ const CLAUDE_EVENT_MAP: Record<string, EventType> = {
   'claude_code.git_commit': 'git_commit',
   'claude_code.plan_step': 'plan_step',
   'claude_code.error': 'error',
-  'claude_code.response': 'response',
+  'claude_code.user_prompt': 'user_prompt',
+  'claude_code.user_prompt_submit': 'user_prompt',
 };
 
 const CODEX_EVENT_MAP: Record<string, EventType> = {
@@ -181,13 +182,15 @@ const CODEX_EVENT_MAP: Record<string, EventType> = {
   'codex.session_end': 'session_end',
   'codex.file_change': 'file_change',
   'codex.error': 'error',
-  'codex.response': 'response',
+  'codex.user_prompt': 'user_prompt',
 };
 
 // High-frequency events to skip — these create noise without useful signal
 const SKIP_EVENTS = new Set([
   'codex.sse_event',
   'codex.websocket.event',
+  'claude_code.response',
+  'codex.response',
 ]);
 
 // ─── Log parser ─────────────────────────────────────────────────────────
@@ -224,6 +227,8 @@ function resolveEventType(
       git_commit: 'git_commit',
       plan_step: 'plan_step',
       error: 'error',
+      user_prompt: 'user_prompt',
+      user_prompt_submit: 'user_prompt',
     };
     if (EVENT_TYPE_SUFFIXES[suffix]) return EVENT_TYPE_SUFFIXES[suffix];
   }
@@ -327,6 +332,9 @@ function parseLogRecord(
       if (!extracted.has(k)) remaining[k] = v;
     }
     if (Object.keys(remaining).length > 0) metadata = remaining;
+  } else if (eventType === 'user_prompt' && logRecord.body?.stringValue) {
+    // Plain-string body on user_prompt events (e.g. Codex OTEL) — store as message
+    metadata = { message: logRecord.body.stringValue };
   }
 
   return {

@@ -76,6 +76,7 @@ const EventFeed = {
   },
 
   statusIcon(event) {
+    if (event.event_type === 'user_prompt') return '<span class="text-violet-400">▸</span>';
     if (event.status === 'error') return '<span class="text-red-400">✗</span>';
     if (event.status === 'timeout') return '<span class="text-yellow-400">⏱</span>';
     return '<span class="text-green-400/60">✓</span>';
@@ -84,6 +85,9 @@ const EventFeed = {
   eventTypeDisplay(event) {
     if (event.event_type === 'tool_use') {
       return `<span class="text-gray-200 font-medium">${event.tool_name || 'tool'}</span>`;
+    }
+    if (event.event_type === 'user_prompt') {
+      return `<span class="text-violet-400 font-medium">prompt</span>`;
     }
     const colors = {
       response: 'text-blue-400',
@@ -97,6 +101,7 @@ const EventFeed = {
   eventDetail(event) {
     try {
       const meta = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : event.metadata;
+      if (meta.message && event.event_type === 'user_prompt') return meta.message;
       if (meta.command) return meta.command;
       if (meta.file_path) return meta.file_path.split('/').pop();
       if (meta.pattern) return meta.pattern;

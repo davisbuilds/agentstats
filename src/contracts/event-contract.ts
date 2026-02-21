@@ -2,13 +2,13 @@ export const EVENT_TYPES = [
   'tool_use',
   'session_start',
   'session_end',
-  'response',
   'error',
   'llm_request',
   'llm_response',
   'file_change',
   'git_commit',
   'plan_step',
+  'user_prompt',
 ] as const;
 
 export const EVENT_STATUSES = [

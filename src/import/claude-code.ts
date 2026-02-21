@@ -50,12 +50,10 @@ interface ClaudeCodeLogLine {
 const TYPE_MAP: Record<string, EventType> = {
   tool_use: 'tool_use',
   tool_result: 'tool_use',
-  user: 'response',
-  assistant: 'response',
+  assistant: 'llm_response',
   error: 'error',
   session_start: 'session_start',
   session_end: 'session_end',
-  system: 'response',
 };
 
 // ─── Discover JSONL files ──────────────────────────────────────────────

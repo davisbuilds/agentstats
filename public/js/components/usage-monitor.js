@@ -1,4 +1,4 @@
-// Usage Monitor - Per-agent rolling window token usage with progress bars
+// Usage Monitor - Per-agent rolling window usage with progress bars (tokens or cost)
 const UsageMonitor = {
   container: null,
   data: null, // AgentUsageData[]
@@ -36,7 +36,7 @@ const UsageMonitor = {
     if (!this.container || !this.data) return;
 
     // Filter to agents that have limits
-    const agents = this.data.filter(a => a.session.limit > 0 || (a.daily && a.daily.limit > 0));
+    const agents = this.data.filter(a => a.session.limit > 0 || (a.extended && a.extended.limit > 0));
 
     if (agents.length === 0) {
       this.container.classList.add('hidden');
@@ -48,6 +48,7 @@ const UsageMonitor = {
 
     for (const agent of agents) {
       const label = this.AGENT_LABELS[agent.agent_type] || agent.agent_type;
+      const fmt = agent.limitType === 'cost' ? this.formatCost : this.formatTokens;
 
       if (agent.session.limit > 0) {
         html += this.renderBar(
@@ -56,18 +57,20 @@ const UsageMonitor = {
           agent.session.limit,
           agent.session.windowHours,
           `session-${agent.agent_type}`,
-          `${agent.session.windowHours}h window`
+          `${agent.session.windowHours}h window`,
+          fmt
         );
       }
 
-      if (agent.daily && agent.daily.limit > 0) {
+      if (agent.extended && agent.extended.limit > 0) {
         html += this.renderBar(
-          `${label} Daily`,
-          agent.daily.used,
-          agent.daily.limit,
-          24,
-          `daily-${agent.agent_type}`,
-          '24h window'
+          `${label}`,
+          agent.extended.used,
+          agent.extended.limit,
+          agent.extended.windowHours,
+          `extended-${agent.agent_type}`,
+          this.formatWindowLabel(agent.extended.windowHours),
+          fmt
         );
       }
     }
@@ -76,11 +79,11 @@ const UsageMonitor = {
     this.container.innerHTML = html;
   },
 
-  renderBar(label, used, limit, windowHours, id, windowLabel) {
+  renderBar(label, used, limit, windowHours, id, windowLabel, fmt) {
     const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
     const color = pct < 60 ? 'bg-emerald-500' : pct < 85 ? 'bg-yellow-500' : 'bg-red-500';
-    const usedFmt = this.formatTokens(used);
-    const limitFmt = this.formatTokens(limit);
+    const usedFmt = fmt(used);
+    const limitFmt = fmt(limit);
 
     return `
       <div class="flex items-center gap-3 min-w-0 flex-1" style="min-width:220px;max-width:440px">
@@ -99,9 +102,19 @@ const UsageMonitor = {
     // Window labels are static ("5h window", "24h window"), no countdown needed
   },
 
+  formatWindowLabel(hours) {
+    if (hours >= 168 && hours % 168 === 0) return `${hours / 168}w window`;
+    if (hours >= 24 && hours % 24 === 0) return `${hours / 24}d window`;
+    return `${hours}h window`;
+  },
+
   formatTokens(n) {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
     if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
     return String(n);
+  },
+
+  formatCost(n) {
+    return '$' + n.toFixed(2);
   },
 };

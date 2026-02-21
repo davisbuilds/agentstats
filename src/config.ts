@@ -5,6 +5,13 @@ function parseEnvInt(value: string | undefined, fallback: number, min: number = 
   return parsed;
 }
 
+function parseEnvFloat(value: string | undefined, fallback: number, min: number = 0): number {
+  if (!value) return fallback;
+  const parsed = Number.parseFloat(value);
+  if (Number.isNaN(parsed) || parsed < min) return fallback;
+  return parsed;
+}
+
 export const config = {
   port: parseEnvInt(process.env.AGENTSTATS_PORT, 3141, 1),
   host: process.env.AGENTSTATS_HOST || '127.0.0.1',
@@ -16,41 +23,48 @@ export const config = {
   maxSseClients: parseEnvInt(process.env.AGENTSTATS_MAX_SSE_CLIENTS, 50, 1),
   sseHeartbeatMs: parseEnvInt(process.env.AGENTSTATS_SSE_HEARTBEAT_MS, 30000, 1000),
   autoImportIntervalMinutes: parseEnvInt(process.env.AGENTSTATS_AUTO_IMPORT_MINUTES, 10, 0),
-  // Usage monitor: per-agent-type limits (env vars use agent type in uppercase)
-  // e.g. AGENTSTATS_SESSION_WINDOW_HOURS_CLAUDE_CODE=5, AGENTSTATS_SESSION_TOKEN_LIMIT_CODEX=50000
+  // Usage monitor: per-agent-type limits (tokens or cost depending on agent)
+  // Claude Code: token limits (AGENTSTATS_SESSION_TOKEN_LIMIT_CLAUDE_CODE)
+  // Codex: cost limits in USD (AGENTSTATS_SESSION_COST_LIMIT_CODEX)
   usageMonitor: parseUsageMonitorConfig(),
 };
 
+export type UsageLimitType = 'tokens' | 'cost';
+
 interface AgentUsageConfig {
+  limitType: UsageLimitType;
   sessionWindowHours: number;
-  sessionTokenLimit: number;
-  dailyTokenLimit: number;
+  sessionLimit: number;
+  extendedWindowHours: number;
+  extendedLimit: number;
 }
 
 function parseUsageMonitorConfig(): Record<string, AgentUsageConfig> {
   const defaultWindowHours = parseEnvInt(process.env.AGENTSTATS_SESSION_WINDOW_HOURS, 5, 1);
-  const defaultSessionLimit = parseEnvInt(process.env.AGENTSTATS_SESSION_TOKEN_LIMIT, 44000, 0);
-  const defaultDailyLimit = parseEnvInt(process.env.AGENTSTATS_DAILY_TOKEN_LIMIT, 0, 0);
 
-  const defaults: AgentUsageConfig = {
-    sessionWindowHours: defaultWindowHours,
-    sessionTokenLimit: defaultSessionLimit,
-    dailyTokenLimit: defaultDailyLimit,
-  };
-
-  // Known agent types with sensible defaults
+  // Known agent types — each uses its own limit type
   const agents: Record<string, AgentUsageConfig> = {
     claude_code: {
-      sessionWindowHours: parseEnvInt(process.env.AGENTSTATS_SESSION_WINDOW_HOURS_CLAUDE_CODE, defaults.sessionWindowHours, 1),
-      sessionTokenLimit: parseEnvInt(process.env.AGENTSTATS_SESSION_TOKEN_LIMIT_CLAUDE_CODE, defaults.sessionTokenLimit, 0),
-      dailyTokenLimit: parseEnvInt(process.env.AGENTSTATS_DAILY_TOKEN_LIMIT_CLAUDE_CODE, defaults.dailyTokenLimit, 0),
+      limitType: 'tokens',
+      sessionWindowHours: parseEnvInt(process.env.AGENTSTATS_SESSION_WINDOW_HOURS_CLAUDE_CODE, defaultWindowHours, 1),
+      sessionLimit: parseEnvInt(process.env.AGENTSTATS_SESSION_TOKEN_LIMIT_CLAUDE_CODE, 44000, 0),
+      extendedWindowHours: parseEnvInt(process.env.AGENTSTATS_EXTENDED_WINDOW_HOURS_CLAUDE_CODE, 24, 1),
+      extendedLimit: parseEnvInt(process.env.AGENTSTATS_EXTENDED_TOKEN_LIMIT_CLAUDE_CODE, 0, 0),
     },
     codex: {
-      sessionWindowHours: parseEnvInt(process.env.AGENTSTATS_SESSION_WINDOW_HOURS_CODEX, defaults.sessionWindowHours, 1),
-      sessionTokenLimit: parseEnvInt(process.env.AGENTSTATS_SESSION_TOKEN_LIMIT_CODEX, defaults.sessionTokenLimit, 0),
-      dailyTokenLimit: parseEnvInt(process.env.AGENTSTATS_DAILY_TOKEN_LIMIT_CODEX, defaults.dailyTokenLimit, 0),
+      limitType: 'cost',
+      sessionWindowHours: parseEnvInt(process.env.AGENTSTATS_SESSION_WINDOW_HOURS_CODEX, defaultWindowHours, 1),
+      sessionLimit: parseEnvFloat(process.env.AGENTSTATS_SESSION_COST_LIMIT_CODEX, 100, 0),
+      extendedWindowHours: parseEnvInt(process.env.AGENTSTATS_EXTENDED_WINDOW_HOURS_CODEX, 168, 1),
+      extendedLimit: parseEnvFloat(process.env.AGENTSTATS_EXTENDED_COST_LIMIT_CODEX, 500, 0),
     },
-    _default: defaults,
+    _default: {
+      limitType: 'tokens',
+      sessionWindowHours: defaultWindowHours,
+      sessionLimit: 0,
+      extendedWindowHours: 24,
+      extendedLimit: 0,
+    },
   };
 
   return agents;

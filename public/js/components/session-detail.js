@@ -250,6 +250,8 @@ const SessionDetail = {
     let typeDisplay;
     if (evt.event_type === 'tool_use') {
       typeDisplay = `<span class="text-gray-200">${evt.tool_name || 'tool'}</span>`;
+    } else if (evt.event_type === 'user_prompt') {
+      typeDisplay = '<span class="text-violet-400 font-medium">prompt</span>';
     } else if (evt.event_type === 'error') {
       typeDisplay = '<span class="text-red-400">error</span>';
     } else {
@@ -259,7 +261,8 @@ const SessionDetail = {
     let detail = '';
     try {
       const meta = typeof evt.metadata === 'string' ? JSON.parse(evt.metadata) : evt.metadata;
-      if (meta.command) detail = meta.command;
+      if (meta.message && evt.event_type === 'user_prompt') detail = meta.message;
+      else if (meta.command) detail = meta.command;
       else if (meta.file_path) detail = meta.file_path.split('/').pop();
       else if (meta.pattern) detail = meta.pattern;
     } catch {}

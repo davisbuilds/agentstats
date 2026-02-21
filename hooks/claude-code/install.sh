@@ -80,12 +80,14 @@ if [ "$USE_PYTHON" = true ]; then
   SESSION_END="python3 $HOOKS_DIR/python/session_end.py"
   POST_TOOL="python3 $HOOKS_DIR/python/post_tool_use.py"
   PRE_TOOL="python3 $HOOKS_DIR/python/pre_tool_use.py"
+  USER_PROMPT="$HOOKS_DIR/user_prompt_submit.sh"  # No Python variant yet
   LANG_LABEL="Python"
 else
   SESSION_START="$HOOKS_DIR/session_start.sh"
   SESSION_END="$HOOKS_DIR/session_end.sh"
   POST_TOOL="$HOOKS_DIR/post_tool_use.sh"
   PRE_TOOL="$HOOKS_DIR/pre_tool_use.sh"
+  USER_PROMPT="$HOOKS_DIR/user_prompt_submit.sh"
   LANG_LABEL="Shell"
 fi
 
@@ -94,6 +96,7 @@ jq --arg session_start "$SESSION_START" \
    --arg session_end "$SESSION_END" \
    --arg post_tool "$POST_TOOL" \
    --arg pre_tool "$PRE_TOOL" \
+   --arg user_prompt "$USER_PROMPT" \
    --arg url "$AGENTSTATS_URL" \
    '
   .hooks = ((.hooks // {}) * {
@@ -148,6 +151,19 @@ jq --arg session_start "$SESSION_START" \
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ("AGENTSTATS_URL=" + $url + " " + $user_prompt),
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
     ]
   })
 ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
@@ -163,6 +179,7 @@ echo "  SessionStart  -> session_start event (async)"
 echo "  Stop          -> session_end event (async)"
 echo "  PostToolUse   -> tool_use event (async)"
 echo "  PreToolUse    -> safety checks on Bash (sync, blocks destructive commands)"
+echo "  UserPromptSubmit -> user_prompt event (async)"
 echo ""
 echo "Start AgentStats with 'pnpm dev' then use Claude Code as normal."
 echo "Events will appear in the dashboard at $AGENTSTATS_URL"

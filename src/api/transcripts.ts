@@ -22,6 +22,7 @@ interface TranscriptEntry {
 function extractDetail(event: TranscriptEvent): string | undefined {
   try {
     const meta = JSON.parse(event.metadata || '{}');
+    if (meta.message && event.event_type === 'user_prompt') return meta.message;
     if (meta.content_preview) return meta.content_preview;
     if (meta.command) return meta.command;
     if (meta.file_path) return meta.file_path;
@@ -38,6 +39,8 @@ function mapRole(eventType: string): 'system' | 'user' | 'assistant' | 'tool' {
     case 'session_start':
     case 'session_end':
       return 'system';
+    case 'user_prompt':
+      return 'user';
     case 'tool_use':
       return 'tool';
     case 'error':

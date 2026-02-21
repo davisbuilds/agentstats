@@ -17,6 +17,7 @@ This registers hooks in `~/.claude/settings.json` that fire on:
 | `Stop` | `session_end` | async |
 | `PostToolUse` | `tool_use` | async |
 | `PreToolUse` (Bash only) | safety check | sync (can block destructive commands) |
+| `UserPromptSubmit` | `user_prompt` | async (non-blocking) |
 
 Start AgentStats (`pnpm dev`), then use Claude Code as normal. Events appear in the dashboard at `http://127.0.0.1:3141`.
 
@@ -69,6 +70,7 @@ export AGENTSTATS_SAFETY=0
 | `session_end.sh` | Maps `Stop` -> `session_end` event |
 | `post_tool_use.sh` | Maps `PostToolUse` -> `tool_use` event |
 | `pre_tool_use.sh` | Safety checks + event on block |
+| `user_prompt_submit.sh` | Maps `UserPromptSubmit` -> `user_prompt` event |
 | `notification.sh` | Maps `Notification` -> `response` event |
 
 ### Python (alternative)

@@ -1,5 +1,5 @@
 import { getDb } from './connection.js';
-import { config } from '../config.js';
+import { config, type UsageLimitType } from '../config.js';
 import { pricingRegistry } from '../pricing/index.js';
 import type { EventStatus, EventType, EventSource } from '../contracts/event-contract.js';
 
@@ -556,8 +556,9 @@ export function getStats(filters?: { agentType?: string; since?: string }): Stat
 
 export interface AgentUsageData {
   agent_type: string;
+  limitType: UsageLimitType;
   session: { used: number; limit: number; windowHours: number };
-  daily: { used: number; limit: number } | null;
+  extended: { used: number; limit: number; windowHours: number } | null;
 }
 
 export type UsageMonitorData = AgentUsageData[];
@@ -577,28 +578,33 @@ export function getUsageMonitor(): UsageMonitorData {
     const agentConfig = monitorConfig[agentType] || monitorConfig._default;
 
     // Skip agents with no limits configured
-    if (agentConfig.sessionTokenLimit === 0 && agentConfig.dailyTokenLimit === 0) continue;
+    if (agentConfig.sessionLimit === 0 && agentConfig.extendedLimit === 0) continue;
+
+    const sumExpr = agentConfig.limitType === 'cost'
+      ? 'COALESCE(SUM(cost_usd), 0)'
+      : 'COALESCE(SUM(tokens_in + tokens_out), 0)';
 
     const sessionRow = db.prepare(`
-      SELECT COALESCE(SUM(tokens_in + tokens_out), 0) as used
+      SELECT ${sumExpr} as used
       FROM events
       WHERE agent_type = ? AND created_at >= datetime('now', ? || ' hours')
     `).get(agentType, `-${agentConfig.sessionWindowHours}`) as { used: number };
 
-    let daily: AgentUsageData['daily'] = null;
-    if (agentConfig.dailyTokenLimit > 0) {
-      const dailyRow = db.prepare(`
-        SELECT COALESCE(SUM(tokens_in + tokens_out), 0) as used
+    let extended: AgentUsageData['extended'] = null;
+    if (agentConfig.extendedLimit > 0) {
+      const extRow = db.prepare(`
+        SELECT ${sumExpr} as used
         FROM events
-        WHERE agent_type = ? AND created_at >= datetime('now', '-24 hours')
-      `).get(agentType) as { used: number };
-      daily = { used: dailyRow.used, limit: agentConfig.dailyTokenLimit };
+        WHERE agent_type = ? AND created_at >= datetime('now', ? || ' hours')
+      `).get(agentType, `-${agentConfig.extendedWindowHours}`) as { used: number };
+      extended = { used: extRow.used, limit: agentConfig.extendedLimit, windowHours: agentConfig.extendedWindowHours };
     }
 
     results.push({
       agent_type: agentType,
-      session: { used: sessionRow.used, limit: agentConfig.sessionTokenLimit, windowHours: agentConfig.sessionWindowHours },
-      daily,
+      limitType: agentConfig.limitType,
+      session: { used: sessionRow.used, limit: agentConfig.sessionLimit, windowHours: agentConfig.sessionWindowHours },
+      extended,
     });
   }
 

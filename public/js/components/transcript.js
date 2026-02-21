@@ -74,6 +74,9 @@ const Transcript = {
       case 'llm_request':
         content = this.renderResponse(entry);
         break;
+      case 'user_prompt':
+        content = this.renderUserPrompt(entry);
+        break;
       case 'error':
         content = this.renderError(entry);
         break;
@@ -146,6 +149,16 @@ const Transcript = {
     `;
   },
 
+  renderUserPrompt(entry) {
+    const detail = entry.detail ? this.escapeHtml(entry.detail).slice(0, 500) : '';
+    return `
+      <div>
+        <span class="text-violet-400 font-medium">User</span>
+        ${detail ? `<div class="text-gray-200 mt-0.5 whitespace-pre-wrap break-words">${detail}</div>` : ''}
+      </div>
+    `;
+  },
+
   renderFileChange(entry) {
     const detail = entry.detail || '';
     return `
@@ -161,6 +174,8 @@ const Transcript = {
       case 'session_start':
       case 'session_end':
         return { dot: 'bg-yellow-400', bg: 'bg-yellow-500/5', border: 'border border-yellow-500/20', icon: '<span class="text-yellow-400">&#9679;</span>' };
+      case 'user_prompt':
+        return { dot: 'bg-violet-400', bg: 'bg-violet-500/5', border: 'border border-violet-500/20', icon: '<span class="text-violet-400">&#9654;</span>' };
       case 'tool_use':
         return {
           dot: entry.status === 'error' ? 'bg-red-400' : 'bg-emerald-400',
