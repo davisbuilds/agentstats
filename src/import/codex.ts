@@ -255,10 +255,30 @@ export function parseCodexFile(
     }
 
     // Extract file stats from apply_patch tool calls
-    if (line.type === 'response_item' && (line.payload as Record<string, unknown>).name === 'apply_patch') {
-      const input = (line.payload as Record<string, unknown>).input;
-      if (typeof input === 'string') {
-        const patchMeta = parsePatchMeta(input);
+    // Format 1: custom_tool_call with name=apply_patch and input=<patch>
+    // Format 2: function_call with name=exec_command and arguments={"cmd":"apply_patch <<'PATCH'\n..."}
+    if (line.type === 'response_item') {
+      const payload = line.payload as Record<string, unknown>;
+      let patchContent: string | undefined;
+
+      if (payload.name === 'apply_patch' && typeof payload.input === 'string') {
+        patchContent = payload.input;
+      } else if (payload.name === 'exec_command' && typeof payload.arguments === 'string') {
+        try {
+          const args = JSON.parse(payload.arguments) as { cmd?: string };
+          if (args.cmd && args.cmd.startsWith('apply_patch')) {
+            patchContent = args.cmd;
+          }
+        } catch {
+          // arguments might be a plain string containing apply_patch
+          if (payload.arguments.startsWith('apply_patch') || payload.arguments.includes('*** Begin Patch')) {
+            patchContent = payload.arguments;
+          }
+        }
+      }
+
+      if (patchContent) {
+        const patchMeta = parsePatchMeta(patchContent);
         if (patchMeta) {
           const eventId = crypto
             .createHash('sha256')
@@ -287,8 +307,8 @@ export function parseCodexFile(
 
           eventIndex++;
         }
+        continue;
       }
-      continue;
     }
 
     // Skip other event types for now
