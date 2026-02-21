@@ -105,6 +105,7 @@ const CostDashboard = {
     return model
       .replace(/claude-sonnet-4-5-\d+/, 'sonnet-4.5')
       .replace(/claude-opus-4-6(-\d+)?/, 'opus-4.6')
+      .replace(/claude-opus-4-5-\d+/, 'opus-4.5')
       .replace(/claude-haiku-4-5-\d+/, 'haiku-4.5')
       .replace(/claude-3-5-sonnet-\d+/, 'sonnet-3.5')
       .replace(/claude-3-5-haiku-\d+/, 'haiku-3.5')

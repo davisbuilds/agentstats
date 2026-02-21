@@ -30,7 +30,7 @@ export function upsertSession(
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       last_event_at = datetime('now'),
-      status = CASE WHEN status = 'ended' THEN status ELSE 'active' END,
+      status = 'active',
       project = COALESCE(excluded.project, sessions.project),
       branch = COALESCE(excluded.branch, sessions.branch)
   `).run(id, agentId, agentType, project || null, branch || null);
@@ -138,10 +138,11 @@ export function updateIdleSessions(timeoutMinutes: number): number {
     AND last_event_at < datetime('now', ? || ' minutes')
   `).run(`-${timeoutMinutes}`);
 
-  // Auto-end idle sessions after 2x the timeout (no explicit session_end received)
+  // Auto-end idle sessions that timed out from inactivity (no explicit session_end)
+  // Sessions explicitly idled via session_end (ended_at set) stay idle until reactivated
   db.prepare(`
     UPDATE sessions SET status = 'ended', ended_at = datetime('now')
-    WHERE status = 'idle'
+    WHERE status = 'idle' AND ended_at IS NULL
     AND last_event_at < datetime('now', ? || ' minutes')
   `).run(`-${timeoutMinutes * 2}`);
 
@@ -151,7 +152,7 @@ export function updateIdleSessions(timeoutMinutes: number): number {
 export function idleSession(sessionId: string): void {
   const db = getDb();
   db.prepare(`
-    UPDATE sessions SET status = 'idle'
+    UPDATE sessions SET status = 'idle', ended_at = datetime('now')
     WHERE id = ? AND status != 'ended'
   `).run(sessionId);
 }

@@ -41,7 +41,7 @@ async function reloadData(filters) {
     if (filters.agent_type) recentParams.set('agent_type', filters.agent_type);
     recentParams.set('limit', '10');
     recentParams.set('status', 'ended');
-    recentParams.set('since', new Date(Date.now() - 30 * 60000).toISOString());
+    recentParams.set('since', new Date(Date.now() - 60 * 60000).toISOString());
 
     const [statsRes, eventsRes, activeRes, recentRes] = await Promise.all([
       fetch(`/api/stats${qsSep}`),
