@@ -259,12 +259,16 @@ const AgentCards = {
     if (event.event_type === 'error') {
       return '<span class="text-red-400">error</span>';
     }
+    if (event.event_type === 'user_prompt') {
+      return '<span class="text-violet-400 font-medium">prompt</span>';
+    }
     return `<span class="text-yellow-400">${event.event_type}</span>`;
   },
 
   eventDetail(event) {
     try {
       const meta = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : event.metadata;
+      if (event.event_type === 'user_prompt' && meta.message) return meta.message;
       if (meta.command) return meta.command;
       if (meta.file_path) return meta.file_path.split('/').pop();
       if (meta.pattern) return meta.pattern;
