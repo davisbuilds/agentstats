@@ -4,6 +4,7 @@ import os from 'os';
 import crypto from 'crypto';
 import type { NormalizedIngestEvent, EventType } from '../contracts/event-contract.js';
 import { pricingRegistry } from '../pricing/index.js';
+import { parsePatchMeta } from '../otel/parser.js';
 
 // ─── Codex JSONL line types ─────────────────────────────────────────────
 
@@ -253,7 +254,44 @@ export function parseCodexFile(
       continue;
     }
 
-    // Skip other event types for now (response_item, etc.)
+    // Extract file stats from apply_patch tool calls
+    if (line.type === 'response_item' && (line.payload as Record<string, unknown>).name === 'apply_patch') {
+      const input = (line.payload as Record<string, unknown>).input;
+      if (typeof input === 'string') {
+        const patchMeta = parsePatchMeta(input);
+        if (patchMeta) {
+          const eventId = crypto
+            .createHash('sha256')
+            .update(`codex:${sessionId}:patch:${eventIndex}`)
+            .digest('hex')
+            .slice(0, 32);
+
+          events.push({
+            event_id: `import-cdx-${eventId}`,
+            session_id: sessionId,
+            agent_type: 'codex',
+            event_type: 'tool_use',
+            tool_name: 'apply_patch',
+            status: 'success',
+            tokens_in: 0,
+            tokens_out: 0,
+            project,
+            client_timestamp: line.timestamp,
+            metadata: {
+              file_path: patchMeta.file_path,
+              lines_added: patchMeta.lines_added,
+              lines_removed: patchMeta.lines_removed,
+            },
+            source: 'import',
+          });
+
+          eventIndex++;
+        }
+      }
+      continue;
+    }
+
+    // Skip other event types for now
   }
 
   // Add session_end event

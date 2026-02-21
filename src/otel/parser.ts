@@ -155,6 +155,32 @@ function nanoToIso(nanos: string | undefined): string | undefined {
   return new Date(ms).toISOString();
 }
 
+// ─── Patch parsing helper ────────────────────────────────────────────────
+
+export interface PatchMeta {
+  file_path: string;
+  lines_added: number;
+  lines_removed: number;
+}
+
+/** Extract file path and line counts from a Codex apply_patch input string. */
+export function parsePatchMeta(input: string): PatchMeta | null {
+  // Match "*** (Update|Add|Delete) File: <path>"
+  const fileMatch = input.match(/\*\*\*\s+(?:Update|Add|Delete)\s+File:\s*(.+)/);
+  if (!fileMatch) return null;
+
+  const filePath = fileMatch[1].trim();
+  let added = 0;
+  let removed = 0;
+
+  for (const line of input.split('\n')) {
+    if (line.startsWith('+') && !line.startsWith('+++')) added++;
+    else if (line.startsWith('-') && !line.startsWith('---')) removed++;
+  }
+
+  return { file_path: filePath, lines_added: added, lines_removed: removed };
+}
+
 // ─── Event name → event_type mapping ────────────────────────────────────
 
 const CLAUDE_EVENT_MAP: Record<string, EventType> = {
@@ -353,6 +379,24 @@ function parseLogRecord(
       } else if (logRecord.body?.stringValue && !bodyJson) {
         // Non-JSON string body — already handled above, but guard for edge cases
         metadata = { ...meta, message: logRecord.body.stringValue };
+      }
+    }
+  }
+
+  // For apply_patch tool events, extract file path and line counts from patch input
+  if (toolName === 'apply_patch') {
+    const meta = (typeof metadata === 'object' && metadata !== null) ? metadata as Record<string, unknown> : {};
+    const patchInput = (meta.input as string | undefined)
+      ?? (bodyJson?.input as string | undefined);
+    if (patchInput) {
+      const patchMeta = parsePatchMeta(patchInput);
+      if (patchMeta) {
+        metadata = {
+          ...meta,
+          file_path: patchMeta.file_path,
+          lines_added: patchMeta.lines_added,
+          lines_removed: patchMeta.lines_removed,
+        };
       }
     }
   }
