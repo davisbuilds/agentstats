@@ -48,8 +48,9 @@ const AgentCards = {
 
   handleEvent(event) {
     const sessionId = event.session_id;
-    if (!this.sessions.has(sessionId)) {
-      // New session
+    const isNew = !this.sessions.has(sessionId);
+    if (isNew) {
+      // New session — seed with a placeholder, then backfill from server
       this.sessions.set(sessionId, {
         session: {
           id: sessionId,
@@ -62,11 +63,16 @@ const AgentCards = {
           event_count: 0,
           tokens_in: 0,
           tokens_out: 0,
+          total_cost_usd: 0,
           files_edited: 0,
+          lines_added: 0,
+          lines_removed: 0,
           _editedFiles: new Set(),
         },
         events: [],
       });
+      // Fetch full server-side aggregates for existing sessions
+      this._backfillSession(sessionId);
     }
 
     const entry = this.sessions.get(sessionId);
@@ -112,10 +118,65 @@ const AgentCards = {
     this.renderAll();
   },
 
-  handleSessionUpdate() {
-    // Re-fetch sessions to get updated statuses
-    // For now just re-render with current data
+  async handleSessionUpdate() {
+    // Re-fetch active/idle sessions from the server to get accurate aggregates
+    try {
+      const activeParams = new URLSearchParams({ limit: '20', exclude_status: 'ended' });
+      const res = await fetch(`/api/sessions?${activeParams}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const freshSessions = data.sessions || [];
+
+      // Merge server data into existing entries (preserve live event lists)
+      const freshIds = new Set();
+      for (const session of freshSessions) {
+        freshIds.add(session.id);
+        const existing = this.sessions.get(session.id);
+        if (existing) {
+          // Update aggregates from server, keep live event list
+          existing.session = { ...existing.session, ...session };
+        } else {
+          this.sessions.set(session.id, { session, events: [] });
+        }
+      }
+
+      // Mark sessions that are no longer active/idle as ended
+      for (const [id, entry] of this.sessions) {
+        if (!freshIds.has(id) && entry.session.status !== 'ended') {
+          entry.session.status = 'ended';
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh sessions:', err);
+    }
     this.renderAll();
+  },
+
+  async _backfillSession(sessionId) {
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}?event_limit=0`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.session) return;
+      const entry = this.sessions.get(sessionId);
+      if (!entry) return;
+      // Merge server aggregates, preserving any live-accumulated increments
+      const s = entry.session;
+      const server = data.session;
+      s.event_count = Math.max(s.event_count || 0, server.event_count || 0);
+      s.tokens_in = Math.max(s.tokens_in || 0, server.tokens_in || 0);
+      s.tokens_out = Math.max(s.tokens_out || 0, server.tokens_out || 0);
+      s.total_cost_usd = Math.max(s.total_cost_usd || 0, server.total_cost_usd || 0);
+      s.files_edited = Math.max(s.files_edited || 0, server.files_edited || 0);
+      s.lines_added = Math.max(s.lines_added || 0, server.lines_added || 0);
+      s.lines_removed = Math.max(s.lines_removed || 0, server.lines_removed || 0);
+      if (server.started_at) s.started_at = server.started_at;
+      if (server.project) s.project = server.project;
+      if (server.branch) s.branch = server.branch;
+      this.renderAll();
+    } catch (err) {
+      // Non-critical — card will still update incrementally
+    }
   },
 
   formatTime(isoString) {
