@@ -36,7 +36,7 @@ const SessionDetail = {
     const panel = document.getElementById('session-detail-panel');
     if (panel) {
       panel.addEventListener('click', (e) => {
-        if (e.target === panel || e.target.closest('#session-detail-close')) {
+        if (e.target === panel || e.target.closest('#session-detail-backdrop') || e.target.closest('#session-detail-close')) {
           this.close();
         }
       });
@@ -55,6 +55,7 @@ const SessionDetail = {
 
     const panel = document.getElementById('session-detail-panel');
     panel.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 
     // Show loading state
     document.getElementById('session-detail-content').innerHTML =
@@ -82,6 +83,7 @@ const SessionDetail = {
     this.visible = false;
     this.sessionId = null;
     document.getElementById('session-detail-panel').classList.add('hidden');
+    document.body.style.overflow = '';
   },
 
   render() {
