@@ -360,7 +360,7 @@ async function benchmarkRuntime(
 
   ensurePortFree(port);
   const child = startFn();
-  let peakRss = 0;
+  let peakRss: number;
 
   try {
     // Measure startup time

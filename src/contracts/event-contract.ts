@@ -18,7 +18,7 @@ const EVENT_STATUSES = [
   'timeout',
 ] as const;
 
-const EVENT_SOURCES = [
+const _EVENT_SOURCES = [
   'api',
   'hook',
   'otel',
@@ -30,7 +30,7 @@ const EVENT_STATUS_SET = new Set<string>(EVENT_STATUSES);
 
 export type EventType = (typeof EVENT_TYPES)[number];
 export type EventStatus = (typeof EVENT_STATUSES)[number];
-export type EventSource = (typeof EVENT_SOURCES)[number];
+export type EventSource = (typeof _EVENT_SOURCES)[number];
 
 export interface NormalizedIngestEvent {
   event_id?: string;

@@ -1,7 +1,7 @@
 import { config } from './config.js';
 import { initSchema } from './db/schema.js';
 import { updateIdleSessions } from './db/queries.js';
-import { startStatsBroadcast } from './api/stream.js';
+import { startStatsBroadcast, stopStatsBroadcast } from './api/stream.js';
 import { broadcaster } from './sse/emitter.js';
 import { createApp } from './app.js';
 import { runImport } from './import/index.js';
@@ -56,6 +56,7 @@ if (config.autoImportIntervalMinutes > 0) {
 // Graceful shutdown
 function shutdown() {
   console.log('\nShutting down AgentMonitor...');
+  stopStatsBroadcast();
   clearInterval(sessionChecker);
   if (autoImportTimer) clearInterval(autoImportTimer);
   server.close(() => {
