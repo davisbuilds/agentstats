@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
+    "chokidar": "^5.0.0",
     "express": "^5.2.1",
     "uuid": "^13.0.0"
   },

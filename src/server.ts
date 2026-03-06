@@ -5,6 +5,7 @@ import { startStatsBroadcast, stopStatsBroadcast } from './api/stream.js';
 import { broadcaster } from './sse/emitter.js';
 import { createApp } from './app.js';
 import { runImport } from './import/index.js';
+import { startWatcher, stopWatcher } from './watcher/service.js';
 
 // Initialize database
 initSchema();
@@ -19,6 +20,9 @@ const server = app.listen(config.port, config.host, () => {
 
 // Start periodic stats broadcast to SSE clients
 startStatsBroadcast();
+
+// Start session file watcher (v2 session browser)
+startWatcher();
 
 // Session timeout checker - mark idle sessions every 60s
 const sessionChecker = setInterval(() => {
@@ -56,6 +60,7 @@ if (config.autoImportIntervalMinutes > 0) {
 // Graceful shutdown
 function shutdown() {
   console.log('\nShutting down AgentMonitor...');
+  stopWatcher();
   stopStatsBroadcast();
   clearInterval(sessionChecker);
   if (autoImportTimer) clearInterval(autoImportTimer);
