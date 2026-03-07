@@ -2,6 +2,7 @@ import { getDb } from './connection.js';
 import type {
   BrowsingSessionRow,
   MessageRow,
+  CountResult,
   SessionsListParams,
   MessagesListParams,
   SearchParams,
@@ -58,7 +59,7 @@ export function listBrowsingSessions(params: SessionsListParams = {}): SessionsR
 
   const total = (db.prepare(
     `SELECT COUNT(*) as c FROM browsing_sessions ${filterWhere}`
-  ).get(...filterValues) as { c: number }).c;
+  ).get(...filterValues) as CountResult).c;
 
   if (params.cursor) {
     conditions.push('started_at < ?');
@@ -107,7 +108,7 @@ export function getSessionMessages(sessionId: string, params: MessagesListParams
 
   const total = (db.prepare(
     'SELECT COUNT(*) as c FROM messages WHERE session_id = ?'
-  ).get(sessionId) as { c: number }).c;
+  ).get(sessionId) as CountResult).c;
 
   const data = db.prepare(
     'SELECT * FROM messages WHERE session_id = ? ORDER BY ordinal LIMIT ? OFFSET ?'
@@ -156,7 +157,7 @@ export function searchMessages(params: SearchParams): FtsSearchResult {
     JOIN browsing_sessions bs ON bs.id = m.session_id
     WHERE messages_fts MATCH ? ${joinFilter}
   `;
-  const total = (db.prepare(countSql).get(params.q, ...values) as { c: number }).c;
+  const total = (db.prepare(countSql).get(params.q, ...values) as CountResult).c;
 
   // Fetch results with snippets
   const offsetCondition = params.cursor ? `AND m.id < ?` : '';

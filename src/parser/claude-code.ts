@@ -26,7 +26,7 @@ export function categorizeToolName(toolName: string): string {
 
 // --- JSONL line types ---
 
-interface ContentBlock {
+export interface ContentBlock {
   type: string;
   text?: string;
   thinking?: string;

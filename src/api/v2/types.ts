@@ -1,38 +1,4 @@
-// --- Content Blocks (stored as JSON array in messages.content) ---
-
-export interface TextBlock {
-  type: 'text';
-  text: string;
-}
-
-export interface CodeBlock {
-  type: 'code';
-  code: string;
-  language?: string;
-}
-
-export interface ThinkingBlock {
-  type: 'thinking';
-  text: string;
-}
-
-export interface ToolUseBlock {
-  type: 'tool_use';
-  tool_use_id: string;
-  tool_name: string;
-  input: unknown;
-}
-
-export interface ToolResultBlock {
-  type: 'tool_result';
-  tool_use_id: string;
-  content: string;
-  is_error?: boolean;
-}
-
-export type ContentBlock = TextBlock | CodeBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock;
-
-// --- Database row types ---
+// --- Database row types (also used as API response shapes) ---
 
 export interface BrowsingSessionRow {
   id: string;
@@ -55,10 +21,10 @@ export interface MessageRow {
   session_id: string;
   ordinal: number;
   role: string;
-  content: string; // JSON-serialized ContentBlock[]
+  content: string; // JSON-serialized content blocks
   timestamp: string | null;
-  has_thinking: number;
-  has_tool_use: number;
+  has_thinking: number; // 0 or 1
+  has_tool_use: number; // 0 or 1
   content_length: number;
 }
 
@@ -75,61 +41,13 @@ export interface ToolCallRow {
   subagent_session_id: string | null;
 }
 
-export interface WatchedFileRow {
-  file_path: string;
-  file_hash: string;
-  file_mtime: string | null;
-  status: string;
-  last_parsed_at: string;
+// --- Aggregate query result ---
+
+export interface CountResult {
+  c: number;
 }
 
-// --- API response types ---
-
-export interface BrowsingSession {
-  id: string;
-  project: string | null;
-  agent: string;
-  first_message: string | null;
-  started_at: string | null;
-  ended_at: string | null;
-  message_count: number;
-  user_message_count: number;
-  parent_session_id: string | null;
-  relationship_type: string | null;
-}
-
-export interface Message {
-  id: number;
-  session_id: string;
-  ordinal: number;
-  role: string;
-  content: ContentBlock[];
-  timestamp: string | null;
-  has_thinking: boolean;
-  has_tool_use: boolean;
-  content_length: number;
-}
-
-export interface ToolCall {
-  id: number;
-  message_id: number;
-  session_id: string;
-  tool_name: string;
-  category: string | null;
-  tool_use_id: string | null;
-  input: unknown;
-  result_content: string | null;
-  subagent_session_id: string | null;
-}
-
-export interface SearchResult {
-  session_id: string;
-  session: BrowsingSession;
-  message_id: number;
-  message_ordinal: number;
-  message_role: string;
-  snippet: string;
-}
+// --- Analytics response types ---
 
 export interface AnalyticsSummary {
   total_sessions: number;
@@ -161,13 +79,7 @@ export interface ToolUsageStat {
   count: number;
 }
 
-// --- API request/response envelopes ---
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  cursor?: string;
-  total?: number;
-}
+// --- API request params ---
 
 export interface SessionsListParams {
   limit?: number;
