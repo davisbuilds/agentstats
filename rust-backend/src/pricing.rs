@@ -123,23 +123,23 @@ mod tests {
     #[test]
     fn calculates_cost_for_known_model() {
         let cost = calculate_cost(
-            "gpt-5.2-codex",
+            "gpt-5.4",
             TokenCounts {
                 input: 100_000,
                 output: 50_000,
-                cache_read: 400_000,
+                cache_read: 40_000,
                 cache_write: 999_999,
             },
         );
         let value = cost.expect("known model should return cost");
-        // 100K * $1.75/MTok + 50K * $14/MTok + 400K * $0.175/MTok + cache write * $0
-        assert!((value - 0.945).abs() < 1e-10);
+        // 100K * $2.50/MTok + 50K * $15/MTok + 40K * $0.25/MTok + cache write * $0
+        assert!((value - 1.01).abs() < 1e-10);
     }
 
     #[test]
     fn supports_aliases_and_provider_prefixes() {
         let cost = calculate_cost(
-            "openai/gpt-5.2-chat-latest",
+            "openai/gpt-5.4-2026-03-05",
             TokenCounts {
                 input: 1_000_000,
                 output: 0,
@@ -148,7 +148,7 @@ mod tests {
             },
         );
         let value = cost.expect("alias should resolve");
-        assert!((value - 1.75).abs() < 1e-10);
+        assert!((value - 2.5).abs() < 1e-10);
     }
 
     #[test]

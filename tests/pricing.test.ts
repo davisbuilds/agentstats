@@ -53,6 +53,18 @@ describe('PricingRegistry', () => {
       assert.equal(pricing.provider, 'openai');
     });
 
+    test('finds OpenAI GPT-5.4 model', () => {
+      const pricing = registry.lookup('gpt-5.4');
+      assert.ok(pricing);
+      assert.equal(pricing.provider, 'openai');
+    });
+
+    test('finds OpenAI GPT-5.4 snapshot alias', () => {
+      const pricing = registry.lookup('gpt-5.4-2026-03-05');
+      assert.ok(pricing);
+      assert.equal(pricing.provider, 'openai');
+    });
+
     test('finds Gemini model', () => {
       const pricing = registry.lookup('gemini-2.5-pro');
       assert.ok(pricing);
@@ -148,6 +160,18 @@ describe('PricingRegistry', () => {
       assert.ok(cost !== null);
       // 100K * $1.75/MTok + 50K * $14/MTok + 400K * $0.175/MTok + cache_write ignored ($0)
       const expected = 0.175 + 0.7 + 0.07;
+      assert.ok(Math.abs(cost - expected) < 0.0001);
+    });
+
+    test('calculates cost for OpenAI GPT-5.4 snapshot alias', () => {
+      const cost = registry.calculate('openai/gpt-5.4-2026-03-05', {
+        input: 100_000,
+        output: 50_000,
+        cacheRead: 40_000,
+      });
+      assert.ok(cost !== null);
+      // 100K * $2.50/MTok + 50K * $15/MTok + 40K * $0.25/MTok
+      const expected = 0.25 + 0.75 + 0.01;
       assert.ok(Math.abs(cost - expected) < 0.0001);
     });
 

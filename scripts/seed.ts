@@ -27,6 +27,7 @@ const CLAUDE_MODELS = [
 
 const CODEX_MODELS = [
   'o3-mini',
+  'gpt-5.4',
   'gpt-4.1',
   'codex-mini-latest',
 ];
@@ -37,6 +38,7 @@ const SEED_PRICING: Record<string, { input: number; output: number }> = {
   'claude-haiku-4-5-20251001': { input: 1, output: 5 },
   'claude-opus-4-5-20251101': { input: 5, output: 25 },
   'o3-mini': { input: 1.1, output: 4.4 },
+  'gpt-5.4': { input: 2.5, output: 15 },
   'gpt-4.1': { input: 2, output: 8 },
   'codex-mini-latest': { input: 1.5, output: 6 },
 };
