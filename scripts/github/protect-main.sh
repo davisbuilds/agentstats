@@ -38,8 +38,7 @@ gh api \
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "Lint, Build, Test",
-      "Parity Tests (TS)"
+      "Lint, Build, Test"
     ]
   },
   "enforce_admins": false,

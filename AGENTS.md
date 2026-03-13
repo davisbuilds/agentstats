@@ -105,7 +105,8 @@ The Rust service reimplements core ingest and live-stream behavior (axum + tokio
 - Run tests: `pnpm rust:test`
 - Desktop invariants only: `pnpm rust:test:desktop-invariants`
 - Import historical logs via Rust: `pnpm rust:import --source all` (supports `--source`, `--from`, `--to`, `--dry-run`, `--force`, `--claude-dir`, `--codex-dir`)
-- Parity tests (TS): `pnpm test:parity:ts` (needs TS server running on 3141)
+- Parity tests (TS): `pnpm test:parity:ts` (isolated temp server + temp DB; does not touch normal monitor data)
+- Parity tests (TS live): `pnpm test:parity:ts:live` (needs TS server running on 3141)
 - Parity tests (Rust): `pnpm test:parity:rust` (needs Rust server running on 3142)
 - Benchmark comparison: `pnpm bench:compare`
 - Tauri desktop dev shell: `pnpm tauri:dev`

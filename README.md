@@ -51,7 +51,8 @@ For continuous rebuilds of the Express-served `/app/`, run `pnpm frontend:watch`
 - `pnpm frontend:watch`: continuously rebuild Svelte SPA to `frontend/dist/` for the Express-served `/app/`.
 - `pnpm test`: run the self-contained TypeScript test suite (excludes parity tests).
 - `pnpm test:watch`: watch-mode test runner.
-- `pnpm test:parity:ts`: run black-box parity tests against a running TypeScript server on `:3141`.
+- `pnpm test:parity:ts`: run black-box parity tests against an isolated temporary TypeScript server and temp DB.
+- `pnpm test:parity:ts:live`: run parity tests against a TypeScript server already running on `:3141`.
 - `pnpm test:parity:rust`: run black-box parity tests against a running Rust server on `:3142`.
 - `pnpm start`: run compiled server from `dist/`.
 - `pnpm run import`: import historical sessions from Claude Code and Codex logs.

@@ -1,6 +1,6 @@
 # Git History and Branch Hygiene
 
-Last updated: February 22, 2026
+Last updated: March 13, 2026
 
 ## Repository Merge Settings
 
@@ -25,20 +25,29 @@ Squash-merge only. All other merge strategies are disabled at the repository lev
 
 ## CI Gates
 
-This project does not have a CI pipeline. Quality gates before merge:
+GitHub Actions workflow: `.github/workflows/ci.yml`
 
+Required check before merge on `main`:
+
+- `Lint, Build, Test`
+
+That workflow runs:
+
+- `pnpm install --frozen-lockfile`
+- `pnpm lint`
 - `pnpm build`
 - `pnpm test`
 
-## Current Limitation
+Manual/non-required checks:
 
-`main` branch protection is not enabled because GitHub returned `403` for branch protection APIs on this private repository tier. Until upgraded, enforce checks and review discipline by team convention.
+- `pnpm test:parity:ts` for isolated TypeScript parity coverage when changing shared HTTP/API behavior
+- `pnpm test:parity:rust` when validating Rust parity explicitly
 
 ## Recommended Ongoing Hygiene
 
 1. Create short-lived feature branches from `main`.
 2. Open PRs early; keep them focused.
-3. Merge only with **Squash and merge** after quality checks pass.
+3. Merge only with **Squash and merge** after the required GitHub check passes.
 4. Periodically prune local branches:
 
 ```bash

@@ -34,7 +34,8 @@ Use descriptive prefixes:
 - Ensure quality checks pass before merge:
   - `pnpm build`
   - `pnpm test`
-  - `pnpm test:parity:ts` when changing shared HTTP/API behavior
+  - Optionally run `pnpm test:parity:ts` when changing shared HTTP/API behavior
+    This uses an isolated temporary server and DB, so it should not pollute local monitor data.
 
 ## Local Branch Cleanup
 

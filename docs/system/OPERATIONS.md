@@ -15,8 +15,11 @@ Open `http://127.0.0.1:3141`.
 ```bash
 pnpm build              # TypeScript build + CSS build
 pnpm start              # Run compiled server from dist/
-pnpm test               # Run test suite (node test runner)
-pnpm test:watch         # Watch-mode test runner
+pnpm test               # Run self-contained TypeScript tests (excludes parity)
+pnpm test:watch         # Watch-mode self-contained test runner
+pnpm test:parity:ts     # Run isolated TypeScript parity tests (temp server + temp DB)
+pnpm test:parity:ts:live # Run parity tests against a running TS server on :3141
+pnpm test:parity:rust   # Run parity tests against a running Rust server on :3142
 pnpm lint               # ESLint
 pnpm seed               # Send demo events (server must be running)
 pnpm run import         # Import historical sessions
@@ -99,12 +102,20 @@ pnpm run import --dry-run               # Preview without writing
 
 ## CI
 
-No CI pipeline. Quality gates are manual:
+GitHub Actions workflow: `.github/workflows/ci.yml`
 
-- `pnpm build` (TypeScript compilation).
-- `pnpm test` (8 test files covering contracts, API, hooks, import, OTEL, pricing, config).
-- `pnpm css:build` (if frontend styles touched).
-- `GET /api/health` sanity check.
+Current required check on `main` branch protection:
+
+- `Lint, Build, Test`
+
+The CI job runs:
+
+- `pnpm install --frozen-lockfile`
+- `pnpm lint`
+- `pnpm build`
+- `pnpm test`
+
+Parity tests are available for manual/shared-runtime verification but are not part of the required CI workflow.
 
 ## Runtime Artifacts
 
