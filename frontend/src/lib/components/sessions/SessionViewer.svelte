@@ -8,6 +8,7 @@
     type Message,
   } from '../../api/client';
   import { timeAgo, agentHexColor } from '../../format';
+  import { getMessagePreviewText, getSessionPreviewText } from '../../session-text';
   import MessageBlock from './MessageBlock.svelte';
 
   interface Props {
@@ -26,6 +27,14 @@
   let hasMore = $state(false);
 
   const PAGE_SIZE = 50;
+  const displayTitle = $derived.by(() => {
+    for (const message of messages) {
+      const preview = getMessagePreviewText(message);
+      if (preview) return preview;
+    }
+    if (!session) return sessionId.slice(0, 12);
+    return getSessionPreviewText(session.first_message) || (session.message_count > 0 ? 'Local command activity' : session.id.slice(0, 12));
+  });
 
   async function load() {
     loading = true;
@@ -87,7 +96,7 @@
           style="background-color: {agentHexColor(session.agent)}"
         ></span>
         <span class="text-sm text-gray-200 truncate font-medium">
-          {session.first_message || session.id.slice(0, 12)}
+          {displayTitle}
         </span>
       </div>
       <div class="flex items-center gap-3 text-xs text-gray-500 shrink-0">
@@ -108,7 +117,7 @@
       <span class="mr-2">Sub-sessions:</span>
       {#each children as child}
         <span class="inline-block bg-gray-800 px-1.5 py-0.5 rounded mr-1">
-          {child.first_message?.slice(0, 30) || child.id.slice(0, 8)}
+          {(getSessionPreviewText(child.first_message) || (child.message_count > 0 ? 'Local command activity' : child.id.slice(0, 8))).slice(0, 30)}
         </span>
       {/each}
     </div>

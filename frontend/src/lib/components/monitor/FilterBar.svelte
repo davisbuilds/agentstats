@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getFilterOptions, getFilters, setFilters } from '../../stores/monitor.svelte';
+  import type { SelectOption } from '../../api/client';
 
   const options = $derived(getFilterOptions());
   const filters = $derived(getFilters());
@@ -20,6 +21,14 @@
     onchange(next);
   }
 
+  function optionValue(option: string | SelectOption): string {
+    return typeof option === 'string' ? option : option.value;
+  }
+
+  function optionLabel(option: string | SelectOption): string {
+    return typeof option === 'string' ? option : option.label;
+  }
+
   const filterDefs: Array<{ key: string; label: string; optionsKey: keyof typeof options }> = [
     { key: 'agent_type', label: 'Agent', optionsKey: 'agent_types' },
     { key: 'event_type', label: 'Event', optionsKey: 'event_types' },
@@ -33,7 +42,7 @@
 
 <div class="flex items-center gap-2 flex-wrap">
   {#each filterDefs as def}
-    {@const opts = options[def.optionsKey] as string[] || []}
+    {@const opts = options[def.optionsKey] as Array<string | SelectOption> || []}
     {#if opts.length > 0}
       <select
         class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-gray-500"
@@ -42,7 +51,7 @@
       >
         <option value="">All {def.label}s</option>
         {#each opts as opt}
-          <option value={opt}>{opt}</option>
+          <option value={optionValue(opt)}>{optionLabel(opt)}</option>
         {/each}
       </select>
     {/if}

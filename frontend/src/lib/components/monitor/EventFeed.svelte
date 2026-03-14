@@ -32,13 +32,13 @@
   }
 </script>
 
-<section class="flex-1 min-h-0 flex flex-col">
+<section class="flex flex-col">
   <div class="flex items-center justify-between mb-3">
     <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">All Events</h2>
     <span class="text-xs text-gray-500">{events.length} events</span>
   </div>
 
-  <div class="flex-1 overflow-y-auto rounded-lg border border-gray-800 bg-gray-900/50 min-h-[200px]">
+  <div class="overflow-y-auto rounded-lg border border-gray-800 bg-gray-900/50 min-h-[200px] max-h-[50vh]">
     {#if events.length === 0}
       <div class="text-center py-12 text-gray-500">
         No events yet. POST to /api/events or run the seed script to see activity.

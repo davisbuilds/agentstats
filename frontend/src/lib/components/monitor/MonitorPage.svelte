@@ -31,10 +31,15 @@
     }
 
     // Load analytics independently
-    Promise.allSettled([
+    const analyticsResults = await Promise.allSettled([
       fetchCostData(filters).then(setCostData),
       fetchToolStats(filters).then(setToolStats),
     ]);
+    for (const result of analyticsResults) {
+      if (result.status === 'rejected') {
+        console.error('Failed to load monitor analytics:', result.reason);
+      }
+    }
   }
 
   onMount(() => {
@@ -42,7 +47,7 @@
   });
 </script>
 
-<main class="flex-1 overflow-hidden flex flex-col p-4 sm:p-6 gap-6">
+<main class="flex-1 min-h-0 overflow-y-auto flex flex-col p-4 sm:p-6 gap-6">
   <section>
     <AgentCards />
   </section>

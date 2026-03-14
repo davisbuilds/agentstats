@@ -43,6 +43,7 @@ interface ClaudeCodeLine {
   parentUuid?: string | null;
   sessionId?: string;
   isSidechain?: boolean;
+  isMeta?: boolean;
   cwd?: string;
   timestamp?: string;
   message?: {
@@ -94,6 +95,23 @@ export interface ParsedSession {
   messages: ParsedMessage[];
   toolCalls: ParsedToolCall[];
   metadata: ParsedSessionMetadata;
+}
+
+function cleanPreviewText(text: string): string {
+  return text.replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function previewTextFromBlocks(blocks: ContentBlock[], isMeta: boolean): string | null {
+  const textBlock = blocks.find((block) => block.type === 'text' && typeof block.text === 'string' && block.text.trim());
+  const text = textBlock?.text?.trim();
+  if (!text) return null;
+
+  if (isMeta) return null;
+  if (text.includes('<local-command-caveat>')) return null;
+  if (text.includes('<command-name>')) return null;
+  if (text.includes('<local-command-stdout>') || text.includes('<local-command-stderr>')) return null;
+
+  return cleanPreviewText(text).slice(0, 200) || null;
 }
 
 // --- Extract project name from file path ---
@@ -258,10 +276,7 @@ export function parseSessionMessages(
     if (msg.role === 'user') {
       userMessageCount++;
       if (firstUserMessage === null) {
-        const textBlock = normalizedBlocks.find(b => b.type === 'text');
-        if (textBlock?.text) {
-          firstUserMessage = textBlock.text.slice(0, 200);
-        }
+        firstUserMessage = previewTextFromBlocks(normalizedBlocks, line.isMeta === true);
       }
     }
 

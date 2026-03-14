@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Message, ContentBlock } from '../../api/client';
+  import { parseSessionText } from '../../session-text';
 
   interface Props {
     message: Message;
@@ -44,9 +45,33 @@
   <!-- Content blocks -->
   {#each blocks as block, i}
     {#if block.type === 'text' && block.text}
-      <div class="text-sm text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
-        {block.text}
-      </div>
+      {@const parsedText = parseSessionText(block.text)}
+      {#if parsedText?.kind === 'caveat'}
+        <div class="rounded border border-sky-900/60 bg-sky-950/20 px-3 py-2 text-xs text-sky-300">
+          Local command transcript follows. Claude marked this output as contextual-only unless explicitly requested.
+        </div>
+      {:else if parsedText?.kind === 'command'}
+        <div class="rounded border border-gray-800 bg-gray-900/40 px-3 py-2">
+          <div class="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Local Command</div>
+          <div class="font-mono text-sm text-gray-200">{parsedText.name || parsedText.message}</div>
+          {#if parsedText.args}
+            <div class="mt-1 text-xs text-gray-500 whitespace-pre-wrap break-words">{parsedText.args}</div>
+          {/if}
+        </div>
+      {:else if parsedText?.kind === 'output'}
+        <div class="rounded border border-gray-800 bg-gray-900/30 px-3 py-2">
+          <div class="text-[11px] uppercase tracking-wide {parsedText.stream === 'stderr' ? 'text-red-400' : 'text-gray-500'} mb-1">
+            {parsedText.stream}
+          </div>
+          <div class="text-sm text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+            {parsedText.text || '(no output)'}
+          </div>
+        </div>
+      {:else}
+        <div class="text-sm text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+          {parsedText?.text || block.text}
+        </div>
+      {/if}
 
     {:else if block.type === 'thinking' && block.thinking}
       <div class="mt-1 mb-1">

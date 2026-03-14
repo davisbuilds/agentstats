@@ -7,6 +7,7 @@
     type BrowsingSession,
   } from '../../api/client';
   import { timeAgo, agentHexColor } from '../../format';
+  import { getSessionPreviewText } from '../../session-text';
   import { consumePendingSession } from '../../stores/router.svelte';
   import SessionViewer from './SessionViewer.svelte';
 
@@ -129,7 +130,7 @@
                 style="background-color: {agentHexColor(session.agent)}"
               ></span>
               <span class="text-sm text-gray-300 truncate">
-                {session.first_message || session.id.slice(0, 12)}
+                {getSessionPreviewText(session.first_message) || (session.message_count > 0 ? 'Local command activity' : session.id.slice(0, 12))}
               </span>
             </div>
             <div class="flex items-center gap-3 shrink-0 text-xs text-gray-500">

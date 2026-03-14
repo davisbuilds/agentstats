@@ -75,13 +75,18 @@ export interface ToolStats {
   }>;
 }
 
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
 export interface FilterOptions {
   agent_types: string[];
   event_types: string[];
   tool_names: string[];
   models: string[];
   projects: string[];
-  branches: string[];
+  branches: SelectOption[];
   sources: string[];
 }
 
@@ -163,6 +168,12 @@ export interface ToolUsageStat {
 
 type Filters = Record<string, string>;
 
+interface RawCostData {
+  timeline?: Array<{ bucket: string; cost_usd: number }>;
+  by_project?: Array<{ project: string; cost_usd: number }>;
+  by_model?: Array<{ model: string; cost_usd: number }>;
+}
+
 function qs(params: Record<string, string | number | undefined>): string {
   const entries = Object.entries(params).filter(([, v]) => v != null);
   if (entries.length === 0) return '';
@@ -201,7 +212,27 @@ export async function fetchFilterOptions(): Promise<FilterOptions> {
 
 export async function fetchCostData(filters: Filters = {}): Promise<CostData> {
   const res = await fetch(`/api/stats/cost${qs(filters)}`);
-  return checkedJson(res, 'fetchCostData');
+  const data = await checkedJson<RawCostData>(res, 'fetchCostData');
+  return {
+    timeline: Array.isArray(data.timeline)
+      ? data.timeline.map((item) => ({
+          date: item.bucket,
+          cost: item.cost_usd,
+        }))
+      : [],
+    by_project: Array.isArray(data.by_project)
+      ? data.by_project.map((item) => ({
+          project: item.project,
+          cost: item.cost_usd,
+        }))
+      : [],
+    by_model: Array.isArray(data.by_model)
+      ? data.by_model.map((item) => ({
+          model: item.model,
+          cost: item.cost_usd,
+        }))
+      : [],
+  };
 }
 
 export async function fetchToolStats(filters: Filters = {}): Promise<ToolStats> {

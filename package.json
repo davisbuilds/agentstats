@@ -16,6 +16,7 @@
     "frontend:build": "pnpm --dir frontend build",
     "frontend:dev": "pnpm --dir frontend dev",
     "frontend:watch": "pnpm --dir frontend build --watch",
+    "reparse:sessions": "tsx scripts/reparse-sessions.ts",
     "css:build": "tailwindcss -i src/input.css -o public/css/output.css --minify",
     "css:watch": "tailwindcss -i src/input.css -o public/css/output.css --watch",
     "seed": "tsx scripts/seed.ts",

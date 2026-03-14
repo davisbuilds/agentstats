@@ -283,6 +283,51 @@ describe('parseSessionMessages', () => {
     assert.ok(result.metadata.first_message!.includes('bug'), 'first_message should be from first user message');
   });
 
+  test('skips local-command metadata when computing first_message', () => {
+    const content = sampleJsonl([
+      {
+        type: 'user',
+        sessionId: 'sess-meta',
+        isMeta: true,
+        message: {
+          role: 'user',
+          content: '<local-command-caveat>Caveat: command transcript follows.</local-command-caveat>',
+        },
+        timestamp: '2026-03-06T12:00:00.000Z',
+      },
+      {
+        type: 'user',
+        sessionId: 'sess-meta',
+        message: {
+          role: 'user',
+          content: '<command-name>/clear</command-name><command-message>clear</command-message><command-args></command-args>',
+        },
+        timestamp: '2026-03-06T12:00:01.000Z',
+      },
+      {
+        type: 'user',
+        sessionId: 'sess-meta',
+        message: {
+          role: 'user',
+          content: '<local-command-stdout>done</local-command-stdout>',
+        },
+        timestamp: '2026-03-06T12:00:02.000Z',
+      },
+      {
+        type: 'user',
+        sessionId: 'sess-meta',
+        message: {
+          role: 'user',
+          content: [{ type: 'text', text: 'Real prompt here' }],
+        },
+        timestamp: '2026-03-06T12:00:03.000Z',
+      },
+    ]);
+
+    const result = parseSessionMessages(content, 'sess-meta');
+    assert.equal(result.metadata.first_message, 'Real prompt here');
+  });
+
   test('skips non-message lines (progress, system, file-history-snapshot)', () => {
     const result = parseSessionMessages(SESSION_WITH_PROGRESS, 'sess-300');
 

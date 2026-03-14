@@ -37,7 +37,11 @@ export function discoverSessionFiles(claudeDir: string): string[] {
 
 export type SyncResult = 'parsed' | 'skipped' | 'error';
 
-export function syncSessionFile(db: Database.Database, filePath: string): SyncResult {
+interface SyncOptions {
+  force?: boolean;
+}
+
+export function syncSessionFile(db: Database.Database, filePath: string, options: SyncOptions = {}): SyncResult {
   try {
     const stat = fs.statSync(filePath);
     const fileHash = hashFile(filePath);
@@ -47,7 +51,7 @@ export function syncSessionFile(db: Database.Database, filePath: string): SyncRe
       'SELECT file_hash FROM watched_files WHERE file_path = ?'
     ).get(filePath) as { file_hash: string } | undefined;
 
-    if (existing && existing.file_hash === fileHash) {
+    if (!options.force && existing && existing.file_hash === fileHash) {
       return 'skipped';
     }
 
@@ -112,12 +116,12 @@ export interface SyncStats {
   total: number;
 }
 
-export function syncAllFiles(db: Database.Database, claudeDir: string): SyncStats {
+export function syncAllFiles(db: Database.Database, claudeDir: string, options: SyncOptions = {}): SyncStats {
   const files = discoverSessionFiles(claudeDir);
   const stats: SyncStats = { parsed: 0, skipped: 0, errors: 0, total: files.length };
 
   for (const filePath of files) {
-    const result = syncSessionFile(db, filePath);
+    const result = syncSessionFile(db, filePath, options);
     stats[result === 'parsed' ? 'parsed' : result === 'skipped' ? 'skipped' : 'errors']++;
   }
 
