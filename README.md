@@ -79,7 +79,24 @@ Environment variables (all optional):
 - `AGENTMONITOR_STATS_INTERVAL` (default: `5000`)
 - `AGENTMONITOR_MAX_SSE_CLIENTS` (default: `50`)
 - `AGENTMONITOR_SSE_HEARTBEAT_MS` (default: `30000`)
+- `AGENTMONITOR_AUTO_IMPORT_MINUTES` (default: `10`) — interval for automatic session import scheduling; `0` disables
 - `AGENTMONITOR_PROJECTS_DIR` (default: auto-detected from cwd ancestry; falls back to current working directory)
+
+### Usage Monitor
+
+Per-agent-type usage limits. Claude Code uses token limits; Codex uses cost limits (USD cents).
+
+- `AGENTMONITOR_SESSION_WINDOW_HOURS` (default: `5`) — base session window for all agents
+- `AGENTMONITOR_SESSION_WINDOW_HOURS_CLAUDE_CODE` (default: inherits base)
+- `AGENTMONITOR_SESSION_TOKEN_LIMIT_CLAUDE_CODE` (default: `44000`)
+- `AGENTMONITOR_EXTENDED_WINDOW_HOURS_CLAUDE_CODE` (default: `24`)
+- `AGENTMONITOR_EXTENDED_TOKEN_LIMIT_CLAUDE_CODE` (default: `0` — disabled)
+- `AGENTMONITOR_WEEKLY_WINDOW_HOURS_CLAUDE_CODE` (default: `168`)
+- `AGENTMONITOR_WEEKLY_TOKEN_LIMIT_CLAUDE_CODE` (default: `293000`)
+- `AGENTMONITOR_SESSION_WINDOW_HOURS_CODEX` (default: inherits base)
+- `AGENTMONITOR_SESSION_COST_LIMIT_CODEX` (default: `500`)
+- `AGENTMONITOR_EXTENDED_WINDOW_HOURS_CODEX` (default: `168`)
+- `AGENTMONITOR_EXTENDED_COST_LIMIT_CODEX` (default: `1500`)
 
 Seed script target override:
 
@@ -211,7 +228,7 @@ Example event:
 - Contributor workflow and PR expectations: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Agent implementation guidance: [AGENTS.md](AGENTS.md)
 - Architecture and code organization: [docs/system/ARCHITECTURE.md](docs/system/ARCHITECTURE.md)
-- Architecture decisions: [docs/plans/adr/2026-02-24-rust-backend-spike-decision-record.md](docs/plans/adr/2026-02-24-rust-backend-spike-decision-record.md)
+- Architecture decisions: [docs/archive/adr/2026-02-24-rust-backend-spike-decision-record.md](docs/archive/adr/2026-02-24-rust-backend-spike-decision-record.md)
 - Feature and API reference: [docs/system/FEATURES.md](docs/system/FEATURES.md)
 - Runtime operations (env, scripts, hooks): [docs/system/OPERATIONS.md](docs/system/OPERATIONS.md)
 - Product roadmap snapshot: [docs/project/ROADMAP.md](docs/project/ROADMAP.md)

@@ -10,8 +10,8 @@
 
 ## Active Decision Records
 
-- `2026-02-24`: [Rust Backend Spike Before Desktop Packaging](../plans/adr/2026-02-24-rust-backend-spike-decision-record.md) — **GO decision reached**. Proceeding with phased Rust migration and Tauri desktop shell. See [spike decision](../plans/2026-02-24-rust-backend-spike-decision.md).
-- `2026-02-26`: [Tauri Internal-First Shell](../plans/2026-02-26-tauri-internal-first-shell-plan.md) with [implementation plan](../plans/2026-02-26-tauri-internal-first-shell-implementation.md) — Phase 2 execution path.
+- `2026-02-24`: [Rust Backend Spike Before Desktop Packaging](../archive/adr/2026-02-24-rust-backend-spike-decision-record.md) — **GO decision reached**. Proceeding with phased Rust migration and Tauri desktop shell. See [spike decision](../archive/plans/rust-spike/2026-02-24-rust-backend-spike-decision.md).
+- `2026-02-26`: [Tauri Internal-First Shell](../archive/plans/tauri-shell/2026-02-26-tauri-internal-first-shell-plan.md) with [implementation plan](../archive/plans/tauri-shell/2026-02-26-tauri-internal-first-shell-implementation.md) — Phase 2 execution path.
 
 ## Rust Backend (phase 1 complete)
 
